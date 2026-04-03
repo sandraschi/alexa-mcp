@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 class ChatRequest(BaseModel):
     message: str
     provider: Optional[str] = "ollama"
-    model: Optional[str] = "gemini-2.0-flash-exp"
+    model: Optional[str] = "llama3"
     endpoint: Optional[str] = "http://localhost:11434"
 
 

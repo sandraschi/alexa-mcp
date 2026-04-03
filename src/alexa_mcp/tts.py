@@ -43,9 +43,7 @@ async def speak_text(
     except Exception as e:
         print(f"Error playing audio: {e}")
         # Fallback diagnostics
-        if not os.path.exists("ffmpeg.exe") and not os.environ.get("PATH", "").find(
-            "ffmpeg"
-        ):
+        if not os.path.exists("ffmpeg.exe") and "ffmpeg" not in os.environ.get("PATH", ""):
             print(
                 "FFmpeg might be missing. Please install FFmpeg for MP3->WAV conversion."
             )
