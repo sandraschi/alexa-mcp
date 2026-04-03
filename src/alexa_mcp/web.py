@@ -30,12 +30,20 @@ def setup_webapp(app, mcp_app=None):
 
         @router.get("/tools")
         async def list_tools():
-            return {
-                "tools": [
-                    {"name": t.name, "description": t.description}
-                    for t in await mcp_app.list_tools()
-                ]
-            }
+            tools = await mcp_app.list_tools()
+            result = []
+            for t in tools:
+                entry = {"name": t.name, "description": t.description}
+                # Expose JSON schema if available (FastMCP Tool.parameters)
+                if hasattr(t, "parameters") and t.parameters is not None:
+                    try:
+                        entry["inputSchema"] = t.parameters.model_json_schema()
+                    except Exception:
+                        entry["inputSchema"] = {}
+                else:
+                    entry["inputSchema"] = {}
+                result.append(entry)
+            return {"tools": result}
 
         @router.post("/tools/{tool_name}")
         async def execute_tool(tool_name: str, request: ToolExecutionRequest):
@@ -54,7 +62,7 @@ def setup_webapp(app, mcp_app=None):
 
         @app.get("/{full_path:path}", response_class=HTMLResponse)
         async def serve_spa(request: Request, full_path: str):
-            # Skip API paths
+            # Skip API paths — let them 404 naturally
             if full_path.startswith("api/") or full_path.startswith("mcp"):
                 return None
 

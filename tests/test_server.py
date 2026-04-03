@@ -143,6 +143,69 @@ class TestInteract:
         assert "it is 3pm" in result
 
 
+class TestGetWeather:
+    @pytest.mark.asyncio
+    async def test_returns_interact_result(self):
+        from alexa_mcp.server import get_weather
+        import numpy as np
+
+        with patch("alexa_mcp.server.speak_text", new=AsyncMock(return_value=None)), \
+             patch("alexa_mcp.server.record_audio", new=AsyncMock(return_value=np.zeros(16000))), \
+             patch("alexa_mcp.server.transcribe_audio", return_value="sunny 22 degrees"):
+            result = await get_weather(timeout=5)
+
+        assert "sunny 22 degrees" in result
+
+    @pytest.mark.asyncio
+    async def test_stores_to_last_weather_resource(self):
+        from alexa_mcp import server as srv
+        import numpy as np
+
+        with patch("alexa_mcp.server.speak_text", new=AsyncMock(return_value=None)), \
+             patch("alexa_mcp.server.record_audio", new=AsyncMock(return_value=np.zeros(16000))), \
+             patch("alexa_mcp.server.transcribe_audio", return_value="cloudy with rain"):
+            await srv.get_weather(timeout=3)
+
+        assert srv._last_weather["response"] is not None
+        assert "cloudy with rain" in srv._last_weather["response"]
+        assert srv._last_weather["timestamp"] is not None
+
+
+class TestChatEndpoint:
+    def test_chat_calls_interact_and_returns_response(self, web_client):
+        import numpy as np
+
+        with patch("alexa_mcp.server.speak_text", new=AsyncMock(return_value=None)), \
+             patch("alexa_mcp.server.record_audio", new=AsyncMock(return_value=np.zeros(16000))), \
+             patch("alexa_mcp.server.transcribe_audio", return_value="lights are on"):
+            resp = web_client.post(
+                "/api/chat",
+                json={"command": "turn on lights", "wait_for_response": True},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "response" in data
+        assert "lights are on" in data["response"]
+
+    def test_chat_no_wait_returns_spoke(self, web_client):
+        with patch("alexa_mcp.server.speak_text", new=AsyncMock(return_value=None)):
+            resp = web_client.post(
+                "/api/chat",
+                json={"command": "turn off lights", "wait_for_response": False},
+            )
+
+        assert resp.status_code == 200
+        assert "response" in resp.json()
+
+    def test_chat_requires_auth(self, unauthed_client):
+        resp = unauthed_client.post(
+            "/api/chat",
+            json={"command": "hello"},
+        )
+        assert resp.status_code == 401
+
+
 class TestMainEntryPoint:
     def test_sys_argv_import_is_correct(self):
         """Regression: server.py must use sys.argv, not os.sys.argv."""
