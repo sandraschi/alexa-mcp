@@ -33,7 +33,7 @@ def setup_webapp(app, mcp_app=None):
             return {
                 "tools": [
                     {"name": t.name, "description": t.description}
-                    for t in mcp_app.list_tools()
+                    for t in await mcp_app.list_tools()
                 ]
             }
 

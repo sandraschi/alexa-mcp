@@ -4,6 +4,7 @@ from .audio import record_audio
 from .tts import speak_text
 from .stt import transcribe_audio
 import os
+import sys
 import uvicorn
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -99,7 +100,7 @@ def main():
     from .transport import run_server
 
     # Check if we should run the web server instead of just MCP
-    if os.getenv("MCP_TRANSPORT") == "http" or "--http" in os.sys.argv:
+    if os.getenv("MCP_TRANSPORT") == "http" or "--http" in sys.argv:
         port = int(os.getenv("MCP_PORT", "10801"))
         print(f"Starting Alexa MCP Web Bridge on port {port}...")
         uvicorn.run(web_app, host="0.0.0.0", port=port)
