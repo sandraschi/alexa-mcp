@@ -1,7 +1,26 @@
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Info, HelpCircle, BookOpen, MessageSquare } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Info, HelpCircle, BookOpen, MessageSquare } from "lucide-react";
+
+interface StatusData {
+    status: string;
+    engines: {
+        stt: string;
+        tts: string;
+        io: string;
+    };
+}
 
 export function Help() {
+    const [status, setStatus] = useState<StatusData | null>(null);
+
+    useEffect(() => {
+        fetch("/api/status")
+            .then(res => res.json())
+            .then(data => setStatus(data))
+            .catch(err => console.error("Failed to fetch help status:", err));
+    }, []);
+
     return (
         <div className="p-6 space-y-6 max-w-4xl mx-auto">
             <div className="flex items-center space-x-3 mb-8">
@@ -20,8 +39,8 @@ export function Help() {
                     <CardContent className="space-y-3 text-sm text-muted-foreground">
                         <p>
                             Alexa MCP acts as an acoustic bridge between your AI and a physical Alexa device.
-                            It uses <strong>Edge-TTS</strong> for high-quality speech synthesis and
-                            <strong>Faster-Whisper</strong> for accurate transcription.
+                            It uses <strong>{status?.engines.tts || "Edge-TTS"}</strong> for high-quality speech synthesis and
+                            <strong>{status?.engines.stt || "Faster-Whisper"}</strong> for accurate transcription.
                         </p>
                         <ul className="list-disc list-inside space-y-1">
                             <li>Commands are spoken via your default audio output.</li>
@@ -53,22 +72,22 @@ export function Help() {
                 <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                         <Info className="w-5 h-5 text-primary" />
-                        <span>Vienna SOTA Configuration</span>
+                        <span>Technical Specifications</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground">
                     <p className="mb-4">
-                        Custom engineered for high-fidelity performance in the 9th District.
-                        Optimized for low-latency acoustic loops.
+                        Acoustic bridge optimized for low-latency voice command processing.
+                        Utilizes local models for transcription and cloud-based synthesis.
                     </p>
                     <div className="grid grid-cols-2 gap-4 text-xs">
                         <div className="p-3 bg-muted/50 rounded border border-white/5">
                             <div className="font-semibold text-primary">TTS Engine</div>
-                            <div>Microsoft Edge (Open Source)</div>
+                            <div>{status?.engines.tts || "Microsoft Edge (Open Source)"}</div>
                         </div>
                         <div className="p-3 bg-muted/50 rounded border border-white/5">
                             <div className="font-semibold text-primary">STT Model</div>
-                            <div>Whisper-base (Int8 Quantized)</div>
+                            <div>{status?.engines.stt || "Whisper-base (Int8 Quantized)"}</div>
                         </div>
                     </div>
                 </CardContent>

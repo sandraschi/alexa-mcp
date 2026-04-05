@@ -33,7 +33,11 @@ export function Topbar() {
                 {/* Global Apps Navigation */}
                 <DropdownMenu.Root>
                     <DropdownMenu.Trigger asChild>
-                        <button className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900/50 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700">
+                        <button
+                            id="apps-menu-trigger"
+                            title="Application switcher"
+                            className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900/50 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700"
+                        >
                             <LayoutGrid className="h-4 w-4" />
                             Apps
                         </button>
@@ -68,14 +72,20 @@ export function Topbar() {
                 </DropdownMenu.Root>
 
                 <button
+                    id="logout-button"
                     onClick={handleLogout}
                     className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/50 text-slate-400 hover:bg-red-500/20 hover:text-red-500 transition-colors"
-                    title="Logout"
+                    title="Logout from session"
+                    aria-label="Logout"
                 >
                     <LogOut className="h-4 w-4" />
                 </button>
 
-                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/50 text-blue-400">
+                <div
+                    id="user-profile"
+                    title="User Profile"
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/50 text-blue-400"
+                >
                     <User className="h-4 w-4" />
                 </div>
             </div>

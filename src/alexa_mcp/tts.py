@@ -1,12 +1,11 @@
-import edge_tts
 import os
-import tempfile
+
+import edge_tts
+
 from .audio import play_audio_file
 
 
-async def speak_text(
-    text: str, voice: str = "en-US-AriaNeural", output_file: str = "tts_output.wav"
-):
+async def speak_text(text: str, voice: str = "en-US-AriaNeural", output_file: str = "tts_output.wav"):
     """
     Synthesizes speech from text using edge-tts and plays it.
     """
@@ -43,12 +42,8 @@ async def speak_text(
     except Exception as e:
         print(f"Error playing audio: {e}")
         # Fallback diagnostics
-        if not os.path.exists("ffmpeg.exe") and not os.environ.get("PATH", "").find(
-            "ffmpeg"
-        ):
-            print(
-                "FFmpeg might be missing. Please install FFmpeg for MP3->WAV conversion."
-            )
+        if not os.path.exists("ffmpeg.exe") and not os.environ.get("PATH", "").find("ffmpeg"):
+            print("FFmpeg might be missing. Please install FFmpeg for MP3->WAV conversion.")
 
     finally:
         # Cleanup

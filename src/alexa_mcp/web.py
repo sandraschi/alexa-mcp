@@ -3,15 +3,23 @@ Web interface and static file serving for Alexa MCP.
 """
 
 from pathlib import Path
+
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from .ai import router as ai_router
 from pydantic import BaseModel
+
+from .ai import router as ai_router
 
 
 class ToolExecutionRequest(BaseModel):
     arguments: dict = {}
+
+
+class LaunchRequest(BaseModel):
+    repo_path: str
+    port: int
+    app_id: str
 
 
 router = APIRouter(prefix="/api")
@@ -30,12 +38,7 @@ def setup_webapp(app, mcp_app=None):
 
         @router.get("/tools")
         async def list_tools():
-            return {
-                "tools": [
-                    {"name": t.name, "description": t.description}
-                    for t in mcp_app.list_tools()
-                ]
-            }
+            return {"tools": [{"name": t.name, "description": t.description} for t in mcp_app.list_tools()]}
 
         @router.post("/tools/{tool_name}")
         async def execute_tool(tool_name: str, request: ToolExecutionRequest):
@@ -48,9 +51,7 @@ def setup_webapp(app, mcp_app=None):
     app.include_router(router)
     app.include_router(ai_router)
     if dist_dir.exists():
-        app.mount(
-            "/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets"
-        )
+        app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
         @app.get("/{full_path:path}", response_class=HTMLResponse)
         async def serve_spa(request: Request, full_path: str):

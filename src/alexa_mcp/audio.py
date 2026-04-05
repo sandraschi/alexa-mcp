@@ -1,12 +1,12 @@
-import sounddevice as sd
+import asyncio
+import os
+
 import numpy as np
 import scipy.io.wavfile as wav
-import os
-import asyncio
-from typing import Optional
+import sounddevice as sd
 
 
-def play_audio_file(file_path: str, device: Optional[int] = None):
+def play_audio_file(file_path: str, device: int | None = None):
     """
     Plays a WAV file using sounddevice.
     """
@@ -23,9 +23,7 @@ def play_audio_file(file_path: str, device: Optional[int] = None):
     sd.wait()
 
 
-async def record_audio(
-    duration: float, sample_rate: int = 16000, device: Optional[int] = None
-) -> np.ndarray:
+async def record_audio(duration: float, sample_rate: int = 16000, device: int | None = None) -> np.ndarray:
     """
     Records audio for a specific duration.
     Returns numpy array of audio data.

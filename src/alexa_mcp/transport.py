@@ -32,7 +32,7 @@ import argparse
 import asyncio
 import logging
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ TransportType = Literal["stdio", "http", "sse"]
 # Environment variable standards
 ENV_TRANSPORT = "MCP_TRANSPORT"  # stdio | http | sse
 ENV_HOST = "MCP_HOST"  # default: 127.0.0.1
-ENV_PORT = "MCP_PORT"  # default: 10806
+ENV_PORT = "MCP_PORT"  # default: 10801
 ENV_PATH = "MCP_PATH"  # default: /mcp (HTTP only)
 
 
@@ -77,7 +77,7 @@ def create_argument_parser(server_name: str) -> argparse.ArgumentParser:
 Environment Variables:
   {ENV_TRANSPORT}    Transport mode: stdio, http, sse (default: stdio)
   {ENV_HOST}         Bind address (default: 127.0.0.1)
-  {ENV_PORT}         Port number (default: 10806)
+  {ENV_PORT}         Port number (default: 10801)
   {ENV_PATH}         HTTP endpoint path (default: /mcp)
 
 Examples:
@@ -85,25 +85,21 @@ Examples:
   python -m {server_name.replace("-", "_")} --stdio
 
   # HTTP mode (web apps)
-  python -m {server_name.replace("-", "_")} --http --port 8080
+  python -m {server_name.replace("-", "_")} --http --port 10801
 
   # Via environment
-  MCP_TRANSPORT=http MCP_PORT=8080 python -m {server_name.replace("-", "_")}
+  MCP_TRANSPORT=http MCP_PORT=10801 python -m {server_name.replace("-", "_")}
 """,
     )
 
     transport_group = parser.add_mutually_exclusive_group()
-    transport_group.add_argument(
-        "--stdio", action="store_true", help="Run in STDIO (JSON-RPC) mode (default)"
-    )
+    transport_group.add_argument("--stdio", action="store_true", help="Run in STDIO (JSON-RPC) mode (default)")
     transport_group.add_argument(
         "--http",
         action="store_true",
         help="Run in HTTP Streamable mode (FastMCP 2.14.4+)",
     )
-    transport_group.add_argument(
-        "--sse", action="store_true", help="Run in SSE mode (deprecated, use --http)"
-    )
+    transport_group.add_argument("--sse", action="store_true", help="Run in SSE mode (deprecated, use --http)")
 
     parser.add_argument(
         "--host",
@@ -114,7 +110,7 @@ Examples:
         "--port",
         type=int,
         default=None,
-        help=f"Port to listen on (default: ${ENV_PORT} or 10806)",
+        help=f"Port to listen on (default: ${ENV_PORT} or 10801)",
     )
     parser.add_argument(
         "--path",
@@ -143,27 +139,22 @@ def resolve_transport(args: argparse.Namespace) -> TransportType:
     """
     if args.http:
         return "http"
-    elif args.sse:
+    if args.sse:
         logger.warning(
             "SSE transport is deprecated. Consider using --http instead. "
             "SSE support will be removed in a future version."
         )
         return "sse"
-    elif args.stdio:
+    if args.stdio:
         return "stdio"
-    else:
-        # Fall back to environment variable
-        env_transport = os.getenv(ENV_TRANSPORT, "stdio").lower()
-        if env_transport not in ("stdio", "http", "sse"):
-            logger.warning(
-                f"Invalid {ENV_TRANSPORT}='{env_transport}', defaulting to stdio"
-            )
-            return "stdio"
-        if env_transport == "sse":
-            logger.warning(
-                "SSE transport is deprecated. Consider using MCP_TRANSPORT=http instead."
-            )
-        return env_transport  # type: ignore
+    # Fall back to environment variable
+    env_transport = os.getenv(ENV_TRANSPORT, "stdio").lower()
+    if env_transport not in ("stdio", "http", "sse"):
+        logger.warning(f"Invalid {ENV_TRANSPORT}='{env_transport}', defaulting to stdio")
+        return "stdio"
+    if env_transport == "sse":
+        logger.warning("SSE transport is deprecated. Consider using MCP_TRANSPORT=http instead.")
+    return env_transport  # type: ignore
 
 
 def resolve_config(args: argparse.Namespace) -> dict:
@@ -188,9 +179,7 @@ def resolve_config(args: argparse.Namespace) -> dict:
     }
 
 
-def run_server(
-    mcp_app, args: Optional[argparse.Namespace] = None, server_name: str = "mcp-server"
-) -> None:
+def run_server(mcp_app, args: argparse.Namespace | None = None, server_name: str = "mcp-server") -> None:
     """
     Unified server runner for all transport modes.
 
@@ -209,9 +198,7 @@ def run_server(
     asyncio.run(run_server_async(mcp_app, args, server_name))
 
 
-async def run_server_async(
-    mcp_app, args: Optional[argparse.Namespace] = None, server_name: str = "mcp-server"
-) -> None:
+async def run_server_async(mcp_app, args: argparse.Namespace | None = None, server_name: str = "mcp-server") -> None:
     """
     Asynchronous unified server runner for all transport modes.
 
@@ -251,9 +238,7 @@ async def run_server_async(
         elif transport == "sse":
             host = config["host"]
             port = config["port"]
-            logger.warning(
-                "SSE mode is deprecated. Migrate to HTTP Streamable (--http)."
-            )
+            logger.warning("SSE mode is deprecated. Migrate to HTTP Streamable (--http).")
             logger.info(f"Running in SSE mode: http://{host}:{port}")
             await mcp_app.run_sse_async(host=host, port=port)
 

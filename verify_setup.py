@@ -1,6 +1,5 @@
-import os
 import asyncio
-import numpy as np
+import os
 
 
 async def main():
@@ -8,10 +7,10 @@ async def main():
 
     # 1. Verify Imports
     try:
-        import sounddevice
         import edge_tts
         import faster_whisper
         import fastmcp
+        import sounddevice
 
         print("[OK] All modules imported successfully.")
     except ImportError as e:
@@ -33,8 +32,6 @@ async def main():
     # 3. Verify TTS (Edge-TTS)
     print("Verifying TTS (Edge-TTS connectivity)...")
     try:
-        from alexa_mcp.tts import speak_text
-
         # We won't play it to avoid noise, just generate
         # Mocking play_audio_file or modifying speak_text?
         # speak_text plays audio. We can patch it or just let it play (it's short).
@@ -42,6 +39,7 @@ async def main():
         # But speak_text plays it.
         # We can mock play_audio_file.
         import alexa_mcp.tts
+        from alexa_mcp.tts import speak_text
 
         original_play = alexa_mcp.tts.play_audio_file
         alexa_mcp.tts.play_audio_file = lambda x: print(f"[MOCK] Playing {x}")

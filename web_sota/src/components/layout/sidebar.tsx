@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/common/utils';
 import {
     LayoutDashboard,
+    LayoutGrid,
     Mic,
     Settings,
     ChevronLeft,
@@ -21,6 +22,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     const navItems = [
         { href: '/', label: 'Overview', icon: LayoutDashboard },
+        { href: '/apps', label: 'Apps', icon: LayoutGrid },
         { href: '/chat', label: 'AI Command', icon: MessageSquare },
         { href: '/tools', label: 'MCP Tools', icon: Wrench },
         { href: '/help', label: 'Help', icon: HelpCircle },
@@ -48,6 +50,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <Link
                             key={item.href}
                             to={item.href}
+                            title={collapsed ? item.label : undefined}
+                            aria-label={item.label}
                             className={cn(
                                 "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-slate-800 hover:text-white",
                                 isActive ? "bg-slate-800 text-white" : "text-slate-400",
@@ -70,7 +74,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
             <div className="border-t border-slate-800 p-2">
                 <button
+                    id="sidebar-toggle"
                     onClick={onToggle}
+                    title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                     className="flex w-full items-center justify-center rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
                 >
                     {collapsed ? <ChevronRight className="h-5 w-5" /> : <div className="flex items-center w-full"><ChevronLeft className="h-5 w-5 mr-3" /><span>Collapse</span></div>}

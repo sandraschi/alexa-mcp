@@ -1,0 +1,12 @@
+# alexa-mcp
+> An MCP server that acts as an acoustic bridge to control an Alexa device. It uses Text-to-Speech (TTS) to issue commands to a physical Alexa device via speakers, and Speech-to-Text (STT) to listen to ...
+
+This project includes automated llms.txt generation for AI accessibility.
+
+## Docs
+- [Readme](README.md): An MCP server that acts as an acoustic bridge to control an Alexa device. It uses Text-to-Speech (TT...
+
+## Configuration
+- [Pyproject](pyproject.toml): Python project configuration and dependencies
+- [Package](web_sota\package.json): Node.js project configuration and dependencies
+- [Config](.git\config): Application configuration files

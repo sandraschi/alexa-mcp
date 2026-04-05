@@ -1,14 +1,11 @@
-from faster_whisper import WhisperModel
-import os
 import numpy as np
+from faster_whisper import WhisperModel
 
 # Global model instance to avoid reloading
 _model = None
 
 
-def get_model(
-    model_size: str = "base", device: str = "cpu", compute_type: str = "int8"
-):
+def get_model(model_size: str = "base", device: str = "cpu", compute_type: str = "int8"):
     global _model
     if _model is None:
         print(f"Loading Whisper model: {model_size} on {device}...")

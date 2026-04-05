@@ -3,25 +3,23 @@ AI Router for MCP Webapps.
 Provides a standardized bridge to Local LLMs.
 """
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
-import httpx
-import os
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
 class ChatRequest(BaseModel):
     message: str
-    provider: Optional[str] = "ollama"
-    model: Optional[str] = "gemini-2.0-flash-exp"
-    endpoint: Optional[str] = "http://localhost:11434"
+    provider: str | None = "ollama"
+    model: str | None = "gemini-2.0-flash-exp"
+    endpoint: str | None = "http://localhost:11434"
 
 
 class ChatResponse(BaseModel):
     response: str
-    tool_calls: Optional[List[str]] = []
+    tool_calls: list[str] | None = []
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -43,9 +41,7 @@ async def chat_with_llm(request: ChatRequest):
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                return ChatResponse(
-                    response=data.get("response", "No response from Ollama")
-                )
+                return ChatResponse(response=data.get("response", "No response from Ollama"))
 
         elif request.provider == "lmstudio":
             async with httpx.AsyncClient() as client:
@@ -63,18 +59,14 @@ async def chat_with_llm(request: ChatRequest):
                 return ChatResponse(response=data["choices"][0]["message"]["content"])
 
         else:
-            raise HTTPException(
-                status_code=400, detail=f"Provider {request.provider} not supported"
-            )
+            raise HTTPException(status_code=400, detail=f"Provider {request.provider} not supported")
 
     except Exception as e:
         return ChatResponse(response=f"AI Bridge Error: {str(e)}")
 
 
 @router.get("/models")
-async def list_models(
-    provider: str = "ollama", endpoint: str = "http://localhost:11434"
-):
+async def list_models(provider: str = "ollama", endpoint: str = "http://localhost:11434"):
     """
     Lists available models for the given provider.
     """

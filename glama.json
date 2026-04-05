@@ -1,0 +1,29 @@
+{
+  "name": "alexa-mcp",
+  "version": "0.2.0",
+  "description": "Acoustic bridge for Alexa via TTS and Whisper STT",
+  "capabilities": {
+    "tools": true,
+    "prompts": true,
+    "resources": false,
+    "sampling": true
+  },
+  "tools": [
+    {
+      "name": "speak_command",
+      "description": "Synthesizes and speaks text via default audio output for Alexa commands."
+    },
+    {
+      "name": "listen_for_response",
+      "description": "Captures microphone audio and transcribes Alexa's spoken response."
+    },
+    {
+      "name": "interact",
+      "description": "Full loop: Speaks command and transcribes response automatically."
+    },
+    {
+      "name": "agentic_alexa_query",
+      "description": "Advanced agentic refinement of user queries before voice synthesis."
+    }
+  ]
+}
