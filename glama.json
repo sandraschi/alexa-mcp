@@ -1,11 +1,11 @@
 {
   "name": "alexa-mcp",
-  "version": "0.2.0",
-  "description": "Acoustic bridge for Alexa via TTS and Whisper STT",
+  "version": "0.3.0",
+  "description": "Acoustic bridge for Alexa - SOTA v14.1 Industrial",
   "capabilities": {
     "tools": true,
     "prompts": true,
-    "resources": false,
+    "resources": true,
     "sampling": true
   },
   "tools": [

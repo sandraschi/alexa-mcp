@@ -1,6 +1,4 @@
-"""
-Authentication module for Alexa MCP.
-"""
+"""Authentication module for Alexa MCP."""
 
 import os
 from secrets import compare_digest
@@ -11,10 +9,8 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 security = HTTPBasic()
 
 
-def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
-    """
-    Simple Basic Auth for the Alexa MCP Web Interface.
-    """
+def authenticate(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+    """Provide simple Basic Auth for the Alexa MCP Web Interface."""
     correct_username = os.getenv("ALEXA_WEB_USER", "sandra")
     correct_password = os.getenv("ALEXA_WEB_PASS", "vienna2026")
 

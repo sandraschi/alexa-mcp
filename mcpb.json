@@ -1,0 +1,28 @@
+{
+  "name": "alexa-mcp",
+  "version": "0.3.0",
+  "author": "sandraschi",
+  "mcp_version": "1.0.0",
+  "fastmcp_version": "3.2.0",
+  "standard": "SOTA v14.1",
+  "entry_points": {
+    "protocol": "alexa_mcp.server:app",
+    "web": "alexa_mcp.server:asgi_app"
+  },
+  "runtime": {
+    "python": ">=3.12",
+    "dependencies": [
+      "fastmcp",
+      "fastapi",
+      "uvicorn",
+      "faster-whisper",
+      "edge-tts",
+      "sounddevice"
+    ]
+  },
+  "industrial": {
+    "dashboard": true,
+    "port_frontend": 10800,
+    "port_backend": 10801
+  }
+}

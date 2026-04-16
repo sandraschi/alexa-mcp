@@ -1,38 +1,40 @@
-﻿# Webapp Start - Standardized SOTA (Auto-Repaired V2.5)
+# Alexa MCP Web Gateway - SOTA v14.1 Industrial Start
 $WebPort = 10800
 $BackendPort = 10801
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
-# 1. Kill any process squatting on the ports
-Write-Host "Checking for port squatters on $WebPort and $BackendPort..." -ForegroundColor Yellow
+# 1. Purge Port Squatters
+Write-Host " [CLEAN] Checking for port squatters on $WebPort and $BackendPort..." -ForegroundColor Yellow
 $pids = Get-NetTCPConnection -LocalPort $WebPort, $BackendPort -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -gt 4 } | Select-Object -ExpandProperty OwningProcess -Unique
 foreach ($p in $pids) {
-    Write-Host "Found squatter (PID: $p). Terminating..." -ForegroundColor Red
-    try { Stop-Process -Id $p -Force -ErrorAction Stop } catch { Write-Host "Warning: Could not terminate PID $p." -ForegroundColor Gray }
+    Write-Host " [KILL] Terminating PID: $p" -ForegroundColor Red
+    try { Stop-Process -Id $p -Force -ErrorAction Stop } catch { Write-Host " [WARN] Could not terminate $p." -ForegroundColor Gray }
 }
 
-# 2. Setup
+# 2. Environment Setup
 Set-Location $PSScriptRoot
-if (-not (Test-Path "node_modules")) { npm install }
+if (-not (Test-Path "node_modules")) { 
+    Write-Host " [INSTALL] Node modules missing. Running npm install..." -ForegroundColor Cyan
+    npm install 
+}
 
-# 3. Start the Python backend (Background)
-Write-Host "Starting Python backend on port $BackendPort ..." -ForegroundColor Cyan
-
-# Run backend from project root so uv run uses project .venv (with fastapi); PYTHONPATH = project src
+# 3. Start Backend Bridge (Industrial Gateway)
+Write-Host " [BACKEND] Starting Alexa MCP Bridge on port $BackendPort..." -ForegroundColor Cyan
 $srcPath = Join-Path $ProjectRoot "src"
-$backendCmd = "Set-Location '$ProjectRoot'; `$env:PYTHONPATH = '$srcPath'; uv run uvicorn alexa_mcp.server:app --host 127.0.0.1 --port $BackendPort --log-level info"
+# Use asgi_app to ensure the Web Bridge (FastAPI) is served, not just the Protocol layer
+$backendCmd = "Set-Location '$ProjectRoot'; `$env:PYTHONPATH = '$srcPath'; uv run uvicorn alexa_mcp.server:asgi_app --host 127.0.0.1 --port $BackendPort --log-level info"
 
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd -WindowStyle Normal
 
-# 4. Run server (Vite dev)
-Write-Host "Starting Vite frontend on port $WebPort ..." -ForegroundColor Green
+# 4. Start Frontend (Vite Dev Server)
+Write-Host " [FRONTEND] Starting Vite frontend on port $WebPort..." -ForegroundColor Green
 
-# 4b. Launch background task to open browser once frontend is ready (Auto-opened by Antigravity)
+# 4b. Auto-Open Browser (Polling)
 $frontendUrl = "http://127.0.0.1:$WebPort/"
 $pollAndOpen = "for (`$i = 0; `$i -lt 60; `$i++) { try { `$null = Invoke-WebRequest -Uri '$frontendUrl' -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; Start-Process '$frontendUrl'; exit } catch { Start-Sleep -Seconds 1 } }"
 Start-Process powershell -ArgumentList "-NoProfile", "-WindowStyle", "Hidden", "-Command", $pollAndOpen
 
-Write-Host "Browser will open automatically when Vite is ready." -ForegroundColor Gray
+Write-Host " [SOTA] System is orchestrating. Dashboard will open shortly." -ForegroundColor Gray
 npm run dev -- --port $WebPort --host
 
 

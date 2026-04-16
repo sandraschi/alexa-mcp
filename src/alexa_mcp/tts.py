@@ -1,14 +1,12 @@
-import os
+from pathlib import Path
 
 import edge_tts
 
 from .audio import play_audio_file
 
 
-async def speak_text(text: str, voice: str = "en-US-AriaNeural", output_file: str = "tts_output.wav"):
-    """
-    Synthesizes speech from text using edge-tts and plays it.
-    """
+async def speak_text(text: str, voice: str = "en-US-AriaNeural", output_file: str = "tts_output.wav") -> None:
+    """Synthesizes speech from text using edge-tts and plays it."""
     communicate = edge_tts.Communicate(text, voice)
 
     # edge-tts output is usually mp3. We might need conversion if play_audio_file expects wav.
@@ -40,14 +38,16 @@ async def speak_text(text: str, voice: str = "en-US-AriaNeural", output_file: st
         play_audio_file(output_file)
 
     except Exception as e:
-        print(f"Error playing audio: {e}")
         # Fallback diagnostics
-        if not os.path.exists("ffmpeg.exe") and not os.environ.get("PATH", "").find("ffmpeg"):
-            print("FFmpeg might be missing. Please install FFmpeg for MP3->WAV conversion.")
+        from .server import logger
+
+        logger.error(f"TTS Synthesis or Playback failure: {e}")
 
     finally:
-        # Cleanup
-        if os.path.exists(mp3_file):
-            os.remove(mp3_file)
-        if os.path.exists(output_file):
-            os.remove(output_file)
+        # Cleanup using pathlib for cleaner async-friendly checks
+        p_mp3 = Path(mp3_file)
+        p_wav = Path(output_file)
+        if p_mp3.exists():  # noqa: ASYNC240
+            p_mp3.unlink()  # noqa: ASYNC240
+        if p_wav.exists():  # noqa: ASYNC240
+            p_wav.unlink()  # noqa: ASYNC240

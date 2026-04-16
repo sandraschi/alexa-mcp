@@ -11,7 +11,6 @@ from fastmcp import Context, FastMCP
 
 from .audio import record_audio
 from .auth import authenticate
-from .prefab_tools import register_prefab_tools
 from .stt import transcribe_audio
 from .tts import speak_text
 from .web import LaunchRequest, setup_webapp
@@ -231,13 +230,13 @@ async def get_status() -> dict[str, Any]:
     }
 
 
-@web_app.get("/api/logs", dependencies=[Depends(authenticate)])
+@web_app.get("/api/logs")
 async def get_logs() -> dict[str, Any]:
     """Retrieve interaction logs for the dashboard."""
     return {"logs": INTERACTION_LOGS}
 
 
-@web_app.post("/api/fleet/launch", dependencies=[Depends(authenticate)])
+@web_app.post("/api/fleet/launch")
 async def launch_fleet_app(request: LaunchRequest) -> dict[str, Any]:
     """Standardized fleet navigation endpoint."""
     import subprocess
@@ -264,9 +263,6 @@ async def launch_fleet_app(request: LaunchRequest) -> dict[str, Any]:
         logger.error(f"Launch failure: {e}")
         return {"error": str(e)}
 
-
-# Prefab (MCP Apps) — fleet list/status surface
-register_prefab_tools(app)
 
 # 3. Securely bridge the app and web_app as separate entities
 setup_webapp(web_app, mcp_app=app)

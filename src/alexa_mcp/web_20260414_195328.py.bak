@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastmcp import FastMCP
@@ -33,9 +33,7 @@ class LaunchRequest(BaseModel):
     app_id: str
 
 
-from .auth import authenticate
-
-router = APIRouter(prefix="/api", dependencies=[Depends(authenticate)])
+router = APIRouter(prefix="/api")
 
 # Directory configuration
 current_dir = Path(__file__).parent

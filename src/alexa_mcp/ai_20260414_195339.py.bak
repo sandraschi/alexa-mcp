@@ -12,9 +12,7 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger("alexa-mcp.ai")
 
-from .auth import authenticate
-
-router = APIRouter(prefix="/api/ai", tags=["ai"], dependencies=[Depends(authenticate)])
+router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
 class ChatRequest(BaseModel):

@@ -1,5 +1,4 @@
-"""
-FastMCP 2.14.4+ Dual Transport Configuration
+"""FastMCP 2.14.4+ Dual Transport Configuration.
 
 Standard module for all MCP servers in d:/Dev/repos.
 Provides unified transport configuration for STDIO, HTTP Streamable, and legacy SSE modes.
@@ -32,7 +31,10 @@ import argparse
 import asyncio
 import logging
 import os
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,11 @@ ENV_PATH = "MCP_PATH"  # default: /mcp (HTTP only)
 
 
 def get_transport_config() -> dict:
-    """
-    Get transport configuration from environment variables.
+    """Get transport configuration from environment variables.
 
     Returns:
         Dictionary with transport, host, port, and path settings.
+
     """
     return {
         "transport": os.getenv(ENV_TRANSPORT, "stdio").lower(),
@@ -61,14 +63,14 @@ def get_transport_config() -> dict:
 
 
 def create_argument_parser(server_name: str) -> argparse.ArgumentParser:
-    """
-    Create standardized CLI argument parser for MCP servers.
+    """Create standardized CLI argument parser for MCP servers.
 
     Args:
         server_name: Name of the MCP server for help text.
 
     Returns:
         Configured ArgumentParser instance.
+
     """
     parser = argparse.ArgumentParser(
         description=f"{server_name} - FastMCP 2.14.4+ Server",
@@ -123,8 +125,7 @@ Examples:
 
 
 def resolve_transport(args: argparse.Namespace) -> TransportType:
-    """
-    Resolve transport type from CLI args with environment fallback.
+    """Resolve transport type from CLI args with environment fallback.
 
     Priority:
         1. CLI arguments (--http, --stdio, --sse)
@@ -136,6 +137,7 @@ def resolve_transport(args: argparse.Namespace) -> TransportType:
 
     Returns:
         Transport type string.
+
     """
     if args.http:
         return "http"
@@ -158,8 +160,7 @@ def resolve_transport(args: argparse.Namespace) -> TransportType:
 
 
 def resolve_config(args: argparse.Namespace) -> dict:
-    """
-    Resolve full transport configuration from CLI args and environment.
+    """Resolve full transport configuration from CLI args and environment.
 
     CLI args take precedence over environment variables.
 
@@ -168,6 +169,7 @@ def resolve_config(args: argparse.Namespace) -> dict:
 
     Returns:
         Dictionary with transport, host, port, path settings.
+
     """
     env_config = get_transport_config()
 
@@ -179,9 +181,8 @@ def resolve_config(args: argparse.Namespace) -> dict:
     }
 
 
-def run_server(mcp_app, args: argparse.Namespace | None = None, server_name: str = "mcp-server") -> None:
-    """
-    Unified server runner for all transport modes.
+def run_server(mcp_app: "FastMCP", args: argparse.Namespace | None = None, server_name: str = "mcp-server") -> None:
+    """Unified server runner for all transport modes.
 
     This is the main entry point for running an MCP server with proper
     transport configuration based on CLI arguments and environment variables.
@@ -193,19 +194,22 @@ def run_server(mcp_app, args: argparse.Namespace | None = None, server_name: str
 
     Raises:
         Exception: If server fails to start.
+
     """
     # Simply run the async version
     asyncio.run(run_server_async(mcp_app, args, server_name))
 
 
-async def run_server_async(mcp_app, args: argparse.Namespace | None = None, server_name: str = "mcp-server") -> None:
-    """
-    Asynchronous unified server runner for all transport modes.
+async def run_server_async(
+    mcp_app: "FastMCP", args: argparse.Namespace | None = None, server_name: str = "mcp-server"
+) -> None:
+    """Asynchronous unified server runner for all transport modes.
 
     Args:
         mcp_app: FastMCP application instance.
         args: Parsed CLI arguments (optional, will parse if None).
         server_name: Server name for logging and help text.
+
     """
     if args is None:
         parser = create_argument_parser(server_name)
@@ -251,15 +255,15 @@ async def run_server_async(mcp_app, args: argparse.Namespace | None = None, serv
 
 # Export public API
 __all__ = [
-    "TransportType",
-    "ENV_TRANSPORT",
     "ENV_HOST",
-    "ENV_PORT",
     "ENV_PATH",
-    "get_transport_config",
+    "ENV_PORT",
+    "ENV_TRANSPORT",
+    "TransportType",
     "create_argument_parser",
-    "resolve_transport",
+    "get_transport_config",
     "resolve_config",
+    "resolve_transport",
     "run_server",
     "run_server_async",
 ]

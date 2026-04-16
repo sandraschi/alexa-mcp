@@ -1,12 +1,24 @@
-# alexa-mcp
-> An MCP server that acts as an acoustic bridge to control an Alexa device. It uses Text-to-Speech (TTS) to issue commands to a physical Alexa device via speakers, and Speech-to-Text (STT) to listen to ...
+# Alexa MCP - Industrial Acoustic Bridge
 
-This project includes automated llms.txt generation for AI accessibility.
+Industrial-grade Model Context Protocol (MCP) server for acoustic smart home orchestration.
 
-## Docs
-- [Readme](README.md): An MCP server that acts as an acoustic bridge to control an Alexa device. It uses Text-to-Speech (TT...
+## Core Capabilities
+- **Neural Synthesis**: Issue verbal commands to physical Alexa devices using neural TTS.
+- **Microphone Capture**: Capture and transcribe Alexa's audio responses back to text.
+- **Acoustic Interaction**: Complete loop (Speak -> Listen -> Transcribe) for verbal interaction.
+- **Dashboards**: Premium web interface for telemetry, logs, and manual control.
 
-## Configuration
-- [Pyproject](pyproject.toml): Python project configuration and dependencies
-- [Package](web_sota\package.json): Node.js project configuration and dependencies
-- [Config](.git\config): Application configuration files
+## Key Tools
+- **interact**: The primary tool for verbal control. Prepends "Alexa, " if needed.
+- **speak_command**: Raw synthesis to the default system audio output.
+- **listen_for_response**: Captures microphone audio and transcribes via Whisper.
+- **agentic_alexa_query**: Uses host sampling to refine user queries into optimal commands.
+
+## Architecture
+- **Layer 1 (Protocol)**: FastMCP 3.2+ server (STDIO).
+- **Layer 2 (Bridge)**: FastAPI web management endpoint.
+- **Engines**: Faster-Whisper (STT), Edge-TTS (TTS), SoundDevice (IO).
+
+## Ports
+- **10800**: Industrial Web Dashboard (Frontend).
+- **10801**: Management API / Tool Bridge (Backend).

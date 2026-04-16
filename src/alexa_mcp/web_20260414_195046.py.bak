@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastmcp import FastMCP
@@ -33,9 +33,7 @@ class LaunchRequest(BaseModel):
     app_id: str
 
 
-from .auth import authenticate
-
-router = APIRouter(prefix="/api", dependencies=[Depends(authenticate)])
+router = APIRouter(prefix="/api")
 
 # Directory configuration
 current_dir = Path(__file__).parent
@@ -88,7 +86,7 @@ def setup_webapp(app: APIRouter | FastAPI, mcp_app: FastMCP | None = None) -> No
     if dist_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
-        @app.get("/{full_path:path}", response_class=HTMLResponse, response_model=None)
+        @app.get("/{full_path:path}", response_class=HTMLResponse)
         async def serve_spa(request: Request, full_path: str) -> HTMLResponse | FileResponse | None:
             # Skip API and MCP protocol paths
             if full_path.startswith("api/") or full_path.startswith("mcp"):

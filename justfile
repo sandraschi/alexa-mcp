@@ -2,10 +2,10 @@ set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
-# Display the SOTA Industrial Dashboard
+# Display the SOTA Industrial Operations Dashboard
 default:
     @$lines = Get-Content '{{justfile()}}'; \
-    Write-Host ' [SOTA] Industrial Operations Dashboard v1.3.2' -ForegroundColor White -BackgroundColor Cyan; \
+    Write-Host ' [SOTA] Alexa MCP Industrial Dashboard v14.1.0' -ForegroundColor White -BackgroundColor Cyan; \
     Write-Host '' ; \
     $currentCategory = ''; \
     foreach ($line in $lines) { \
@@ -27,30 +27,65 @@ default:
             } \
         } \
     } \
-    Write-Host "`n  [System State: PROD/HARDENED]" -ForegroundColor DarkGray; \
+    Write-Host "`n  [System State: PROD/INDUSTRIAL]" -ForegroundColor DarkGray; \
     Write-Host ''
+
+# ── Development ───────────────────────────────────────────────────────────────
+
+# Start the full web gateway and backend bridge
+dev:
+    Set-Location '{{justfile_directory()}}/web_sota'
+    powershell -File start.ps1
+
+# Build the frontend production bundle
+build:
+    Set-Location '{{justfile_directory()}}/web_sota'
+    npm run build
+
+# Install all workspace dependencies (uv and npm)
+install:
+    uv sync
+    Set-Location '{{justfile_directory()}}/web_sota'
+    npm install
 
 # ── Quality ───────────────────────────────────────────────────────────────────
 
-# Execute Ruff SOTA v13.1 linting
+# Execute Ruff SOTA v14.1 linting
 lint:
-    Set-Location '{{justfile_directory()}}'
     uv run ruff check .
+    Set-Location '{{justfile_directory()}}\web_sota'
+    npx @biomejs/biome ci .
 
-# Execute Ruff SOTA v13.1 fix and formatting
+# Execute Ruff SOTA v14.1 fix and formatting
 fix:
-    Set-Location '{{justfile_directory()}}'
     uv run ruff check . --fix --unsafe-fixes
     uv run ruff format .
+    Set-Location '{{justfile_directory()}}\web_sota'
+    npx @biomejs/biome check --write .
 
-# ── Hardening ─────────────────────────────────────────────────────────────────
+# Execute the professional test suite
+test:
+    uv run pytest tests/
 
-# Execute Bandit security audit
-check-sec:
-    Set-Location '{{justfile_directory()}}'
+# Generate test coverage report
+coverage:
+    uv run pytest --cov=src tests/
+
+# Execute a direct acoustic verification test
+live-test:
+    uv run python scripts/live_test.py
+
+# Execute security and dependency audits
+audit:
     uv run bandit -r src/
-
-# Execute safety audit of dependencies
-audit-deps:
-    Set-Location '{{justfile_directory()}}'
     uv run safety check
+
+# ── Maintenance ───────────────────────────────────────────────────────────────
+
+# Clean all build and cache artifacts
+clean:
+    Remove-Item -Recurse -Force .venv, .ruff_cache, web_sota/dist, web_sota/node_modules -ErrorAction SilentlyContinue
+
+# Verify local audio device connectivity
+verify:
+    uv run python verify_setup.py

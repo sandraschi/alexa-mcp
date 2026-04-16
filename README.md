@@ -1,67 +1,61 @@
-# Alexa MCP Server
+# Alexa MCP - Industrial Acoustic Bridge
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Industrial-cyan?style=for-the-badge&logo=probot&logoColor=white" alt="Industrial Status"/>
+  <img src="https://img.shields.io/badge/Standard-SOTA%20v14.1-blue?style=for-the-badge&logo=github&logoColor=white" alt="SOTA Standard"/>
+  <img src="https://img.shields.io/badge/Audio-Acoustic%20Bridge-orange?style=for-the-badge&logo=sounddevice&logoColor=white" alt="Audio Bridge"/>
+</p>
 
-An MCP server that acts as an acoustic bridge to control an Alexa device. It uses Text-to-Speech (TTS) to issue commands to a physical Alexa device via speakers, and Speech-to-Text (STT) to listen to Alexa's responses via a microphone.
+##  "The Pulse of the Smart Home"
+Transform your AI into a physical presence. The **Alexa Acoustic Bridge** allows agentic AI to issue verbal commands to Alexa devices and hear her responses perfectly, bridging the gap between digital intelligence and physical smart home hardware.
 
-## Technical Architecture
-- **TTS Engine**: `edge-tts` (Neural speech synthesis)
-- **STT Engine**: `faster-whisper` (Base model, Int8 quantized)
-- **Audio I/O**: `sounddevice` / `pydub`
-- **Framework**: `FastMCP` (Python)
+##  Operational Overview
+The server acts as a localized proxy. It synthesizes natural language into neural speech for Alexa to hear and uses local inference to transcribe Alexa's ambient audio response back into high-fidelity text.
 
-## Prerequisites
-- **Hardware**: A computer with Speakers and a Microphone, placed near an Alexa device (Echo Dot, etc.).
-- **Software**: 
-  - Python 3.10+
-  - `ffmpeg` installed and on PATH (required for audio conversion).
+###  Key Features
+- **Neural TTS**: High-clarity commands via `edge-tts` (Aria).
+- **Local STT**: Low-latency transcription via `faster-whisper`.
+- **Hybrid Transport**: Supports standard MCP Protocol (STDIO) and the Industrial Web Bridge (FastAPI).
+- **Industrial Dashboard**: Premium web interface for fleet telemetry and manual interaction.
 
-##  Installation
+##  Installation & Orchestration
 
 ### Prerequisites
-- [uv](https://docs.astral.sh/uv/) installed (RECOMMENDED)
+- [uv](https://docs.astral.sh/uv/) (Required for high-performance orchestration)
 - Python 3.12+
+- `ffmpeg` (Installed on system PATH)
 
-###  Quick Start
-Run immediately via `uvx`:
+### Quick Start (Protocol Mode)
 ```bash
 uvx alexa-mcp
 ```
 
-###  Claude Desktop Integration
-Add to your `claude_desktop_config.json`:
-```json
-"mcpServers": {
-  "alexa-mcp": {
-    "command": "uv",
-    "args": ["--directory", "D:/Dev/repos/alexa-mcp", "run", "alexa-mcp"]
-  }
-}
+### Industrial Mode (Web Dashboard)
+To launch the full control plane:
+```powershell
+just dev
 ```
-## Usage
+*Or navigate to `web_sota` and run `start.ps1`.*
 
-Run the server:
-```bash
-mcp run src/alexa_mcp/server.py
-```
-Or use the MCP CLI / Inspector.
+##  Tool Catalog
 
-### Tools
+| Tool | Action | Description |
+| :--- | :--- | :--- |
+| `interact` | Command | Full acoustic loop: Speak + Listen (transcribe). |
+| `speak_command` | Synthesis | Neural TTS delivery to specified output device. |
+| `listen_response`| Capture | High-fidelity STT transcription of Alexa's output. |
+| `agentic_query` | Agentic | Samples host to refine queries before acoustic delivery. |
+| `docs_help` | Info | Returns technical architecture and protocol docs. |
 
-- `speak_command(text: str)`: Speaks the given text.
-- `listen_response(duration: int = 10)`: Listens for `duration` seconds and returns transcription.
-- `interact(command: str, wait_for_response: bool = True, timeout: int = 10)`: Speaks "Alexa, {command}" (or just command if it starts with Alexa) and returns the response.
+##  Architecture
+The server implements a strict **Instance Separation Pattern**:
+- **MCP Server**: Handles JSON-RPC protocol/stdio via FastMCP.
+- **Web Bridge**: Serves the React Dashboard and REST API via FastAPI.
+- **Audio Logic**: Decoupled hardware management via `sounddevice`.
 
-## Troubleshooting
+##  Standards & Compliance
+- **Doctrine**: Android Robotics Doctrine Compliance v1.2.
+- **Registry**: Synchronized with MCP Central Docs.
+- **Hardening**: Ruff v14.1, Typed Pydantic models.
 
-- **Audio Device Error**: Ensure your default input/output devices are correctly set in OS settings or specify device indices in `audio.py` if needed.
-- **FFmpeg missing**: Install FFmpeg (`winget install ffmpeg` on Windows).
-
-
-## Web Dashboard
-The server includes a web interface for monitoring and manual control.
-- **Web Port**: `10800`
-- **Backend API**: `10801`
-
-To launch:
-1. Navigate to `/web_sota`.
-2. Run `start.bat` or `start.ps1`.
-3. Access `http://localhost:10800`.
+---
+**By FlowEngineer sandraschi** | *Revolutionizing acoustic smart home orchestration.*
