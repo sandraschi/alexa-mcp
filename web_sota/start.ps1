@@ -1,3 +1,13 @@
+﻿Param([switch]$Headless)
+
+# --- SOTA Headless Standard ---
+if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
+    Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Headless' -WindowStyle Hidden
+    exit
+}
+$WindowStyle = if ($Headless) { 'Hidden' } else { 'Normal' }
+# ------------------------------
+
 # Alexa MCP Web Gateway - SOTA v14.1 Industrial Start
 $WebPort = 10800
 $BackendPort = 10801
@@ -36,6 +46,7 @@ Start-Process powershell -ArgumentList "-NoProfile", "-WindowStyle", "Hidden", "
 
 Write-Host " [SOTA] System is orchestrating. Dashboard will open shortly." -ForegroundColor Gray
 npm run dev -- --port $WebPort --host
+
 
 
 

@@ -1,4 +1,6 @@
 # Alexa MCP - Industrial Acoustic Bridge
+
+[![FastMCP Version](https://img.shields.io/badge/FastMCP-3.2.0-blue?style=flat-square&logo=python&logoColor=white)](https://github.com/sandraschi/fastmcp) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![Linted with Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat-square&logo=biome&logoColor=white)](https://biomejs.dev/) [![Built with Just](https://img.shields.io/badge/Built_with-Just-000000?style=flat-square&logo=gnu-bash&logoColor=white)](https://github.com/casey/just)
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Industrial-cyan?style=for-the-badge&logo=probot&logoColor=white" alt="Industrial Status"/>
   <img src="https://img.shields.io/badge/Standard-SOTA%20v14.1-blue?style=for-the-badge&logo=github&logoColor=white" alt="SOTA Standard"/>
@@ -48,7 +50,7 @@ just dev
 
 ##  Architecture
 The server implements a strict **Instance Separation Pattern**:
-- **MCP Server**: Handles JSON-RPC protocol/stdio via FastMCP.
+- **MCP Server**: Handles JSON-RPC protocol/stdio via FastMCP 3.2.0
 - **Web Bridge**: Serves the React Dashboard and REST API via FastAPI.
 - **Audio Logic**: Decoupled hardware management via `sounddevice`.
 
@@ -59,3 +61,14 @@ The server implements a strict **Instance Separation Pattern**:
 
 ---
 **By FlowEngineer sandraschi** | *Revolutionizing acoustic smart home orchestration.*
+
+
+## 🛡️ Industrial Quality Stack
+
+This project adheres to **SOTA 14.1** industrial standards for high-fidelity agentic orchestration:
+
+- **Python (Core)**: [Ruff](https://astral.sh/ruff) for linting and formatting. Zero-tolerance for `print` statements in core handlers (`T201`).
+- **Webapp (UI)**: [Biome](https://biomejs.dev/) for sub-millisecond linting. Strict `noConsoleLog` enforcement.
+- **Protocol Compliance**: Hardened `stdout/stderr` isolation to ensure crash-resistant JSON-RPC communication.
+- **Automation**: [Justfile](./justfile) recipes for all fleet operations (`just lint`, `just fix`, `just dev`).
+- **Security**: Automated audits via `bandit` and `safety`.
