@@ -19,6 +19,16 @@ lerna-debug.log*
 .next/
 out/
 
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.eggs/
+
 # IDE and OS-specific
 .DS_Store
 Thumbs.db

@@ -1,5 +1,6 @@
 """Web interface and static file serving for Alexa MCP."""
 
+import inspect
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +70,10 @@ def register_tool_routes(mcp_app: FastMCP) -> None:
 
     @router.get("/tools")
     async def list_tools() -> dict[str, Any]:
-        return {"tools": [{"name": t.name, "description": t.description} for t in mcp_app.list_tools()]}
+        tools = mcp_app.list_tools()
+        if inspect.isawaitable(tools):
+            tools = await tools
+        return {"tools": [{"name": t.name, "description": t.description} for t in tools]}
 
     @router.post("/tools/{tool_name}")
     async def execute_tool(tool_name: str, request: ToolExecutionRequest) -> dict[str, Any]:

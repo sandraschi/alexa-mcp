@@ -319,7 +319,7 @@ def main() -> None:
     from .transport import run_server
 
     # Check if we should run the Web Bridge instead of just MCP Protocol
-    if os.getenv("MCP_TRANSPORT") == "http" or "--http" in os.sys.argv:
+    if os.getenv("MCP_TRANSPORT") == "http" or "--http" in sys.argv:
         port = int(os.getenv("MCP_PORT", "10801"))
         logger.info(f"Starting Alexa MCP Web Bridge on port {port}...")
         uvicorn.run(web_app, host="0.0.0.0", port=port)  # noqa: S104
