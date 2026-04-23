@@ -33,4 +33,5 @@ function Badge({ className, variant, ...props }: BadgeProps) {
     )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- cva helpers are consumed by other modules
 export { Badge, badgeVariants }

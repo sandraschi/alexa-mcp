@@ -9,7 +9,7 @@ from alexa_mcp.server import app
 
 
 async def run_live_test() -> None:
-    """Executes a direct acoustic test command via the 'interact' tool."""
+    """Run a direct acoustic test via the interact tool."""
     # We call the tool directly using the app instance
     await app.call_tool("interact", {"command": "weather", "wait_for_response": True})
 

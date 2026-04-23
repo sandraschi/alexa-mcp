@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import sys
+from collections import deque
+from datetime import UTC, datetime
 from typing import Any
 
 import uvicorn
@@ -17,11 +19,27 @@ from .tts import speak_text
 from .web import LaunchRequest, setup_webapp
 
 # Configure logging
+APP_LOG_BUFFER: deque[str] = deque(maxlen=800)
+
+
+class _MemoryLogHandler(logging.Handler):
+    """Ring buffer of formatted log lines for the webapp Logger page."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            APP_LOG_BUFFER.append(self.format(record))
+        except Exception:
+            self.handleError(record)
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s - %(message)s",
     stream=sys.stderr,
 )
+_mem_handler = _MemoryLogHandler()
+_mem_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s - %(message)s"))
+logging.getLogger().addHandler(_mem_handler)
 logger = logging.getLogger("alexa-mcp")
 
 # 1. Initialize FastMCP (Acoustic Protocol Layer)
@@ -89,6 +107,29 @@ async def docs_help() -> str:
         "2. **Speak**: Audio is played via the system's default output device.",
         "3. **Listen**: Systems enters a recording state for a specified duration.",
         "4. **Analyze**: Audio buffers are processed by the Whisper model to return a text response.",
+        "\n## Amazon Alexa+ (ecosystem)",
+        (
+            "This bridge drives a *physical* Alexa. On Amazon's side, the product **Alexa+** is a "
+            "separate generative upgrade (Prime/subscription, regional rollout)."
+        ),
+        (
+            "As of 2026 public posts: **US** broad launch (e.g. Feb 2026 in trade press), **UK** from 19 Mar 2026 "
+            "(Early Access), and **CA/MX/IT** named alongside US/UK in Amazon's international announcement; "
+            "**Austria** is not named there."
+        ),
+        (
+            "**Reception (third-party)**: Outlets report both strong upgrades for Echo-heavy Prime homes and pain "
+            "points (reliability, over-chatty replies, app UX). See README (Amazon Alexa+ section) for links: "
+            "Consumer Reports, CNET, WIRED, etc."
+        ),
+        (
+            "\n**Web bridge (roadmap)**: HTTP dashboard/API are not yet built for untrusted exposure; **auth for the "
+            "control plane is planned** (see README)."
+        ),
+        (
+            "\n**TTS shopping guard**: Heuristic block for buy/order/cart + Amazon context (env `ALEXA_SHOPPING_GUARD`,"
+            " default on). See README."
+        ),
     ]
     return "\n".join(lines)
 
@@ -161,6 +202,7 @@ async def interact(command: str, wait_for_response: bool = True, timeout: int = 
         "response": transcription,
         "success": success,
         "timestamp": asyncio.get_event_loop().time(),
+        "recorded_at": datetime.now(UTC).isoformat(),
     }
     INTERACTION_LOGS.insert(0, log_entry)
     if len(INTERACTION_LOGS) > MAX_LOG_SIZE:
@@ -233,8 +275,8 @@ async def get_status() -> dict[str, Any]:
 
 @web_app.get("/api/logs", dependencies=[Depends(authenticate)])
 async def get_logs() -> dict[str, Any]:
-    """Retrieve interaction logs for the dashboard."""
-    return {"logs": INTERACTION_LOGS}
+    """Interaction history and in-memory server log lines for the webapp."""
+    return {"logs": INTERACTION_LOGS, "app_lines": list(APP_LOG_BUFFER)}
 
 
 @web_app.post("/api/fleet/launch", dependencies=[Depends(authenticate)])

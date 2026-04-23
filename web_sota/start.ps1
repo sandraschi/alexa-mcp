@@ -36,6 +36,32 @@ $backendCmd = "Set-Location '$ProjectRoot'; `$env:PYTHONPATH = '$srcPath'; uv ru
 
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd -WindowStyle Normal
 
+# 3b. Wait until uvicorn is listening (Vite proxies /api to this port; starting Vite first causes ECONNREFUSED spam)
+Write-Host " [WAIT] Waiting for backend TCP on port $BackendPort..." -ForegroundColor DarkGray
+$backendReady = $false
+for ($i = 0; $i -lt 120; $i++) {
+    $tcp = $null
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        $tcp.Connect("127.0.0.1", $BackendPort)
+        if ($tcp.Connected) {
+            Write-Host " [BACKEND] Listening (waited $($i * 250) ms)." -ForegroundColor Green
+            $backendReady = $true
+            break
+        }
+    } catch {
+        Start-Sleep -Milliseconds 250
+    } finally {
+        if ($null -ne $tcp) {
+            try { $tcp.Close() } catch {}
+            try { $tcp.Dispose() } catch {}
+        }
+    }
+}
+if (-not $backendReady) {
+    Write-Host " [WARN] Port $BackendPort not open after ~30s. Open the backend window for errors; Vite /api proxy will fail until it is up." -ForegroundColor Yellow
+}
+
 # 4. Start Frontend (Vite Dev Server)
 Write-Host " [FRONTEND] Starting Vite frontend on port $WebPort..." -ForegroundColor Green
 

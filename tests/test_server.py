@@ -1,10 +1,12 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from alexa_mcp.server import app
 
 
 @pytest.mark.asyncio
-async def test_speak_command(mock_tts) -> None:
+async def test_speak_command(mock_tts: AsyncMock) -> None:
     """Verify the speak_command tool call."""
     result = await app.call_tool("speak_command", {"text": "Hello Alexa"})
     # FastMCP 3.2 returns ToolResult, we need to check the text content
@@ -14,7 +16,11 @@ async def test_speak_command(mock_tts) -> None:
 
 
 @pytest.mark.asyncio
-async def test_interact_flow(mock_tts, mock_stt, mock_audio) -> None:
+async def test_interact_flow(
+    mock_tts: AsyncMock,
+    mock_stt: MagicMock,
+    mock_audio: dict,
+) -> None:
     """Verify the full interact tool flow."""
     result = await app.call_tool("interact", {"command": "what time is it", "wait_for_response": True})
 

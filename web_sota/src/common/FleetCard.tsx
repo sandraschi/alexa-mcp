@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, Play, Loader2, AlertCircle } from 'lucide-react';
 import { FleetMember } from './apps-catalog';
+import { api } from '@/common/api';
 import { cn } from '@/common/utils';
 
 interface FleetCardProps {
@@ -38,7 +39,7 @@ export function FleetCard({ member, currentAppId }: FleetCardProps) {
         setIsLaunching(true);
         setError(null);
         try {
-            const resp = await fetch('/api/fleet/launch', {
+            const resp = await fetch(api.fleetLaunch, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -72,8 +73,8 @@ export function FleetCard({ member, currentAppId }: FleetCardProps) {
                 }
             }, 1000);
 
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
             setIsLaunching(false);
         }
     };

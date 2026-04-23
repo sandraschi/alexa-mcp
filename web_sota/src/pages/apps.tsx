@@ -1,4 +1,3 @@
-import React from 'react';
 import { Activity, Zap } from "lucide-react";
 import { FLEET_REGISTRY } from '@/common/apps-catalog';
 import { FleetCard } from '@/common/FleetCard';

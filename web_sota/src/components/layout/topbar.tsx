@@ -1,6 +1,6 @@
 'use client';
 
-import { APPS_CATALOG } from '@/common/apps-catalog';
+import { APPS_CATALOG, type AppCatalogEntry } from '@/common/apps-catalog';
 import { LayoutGrid, ExternalLink, LogOut, User } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -55,7 +55,7 @@ export function Topbar() {
 
                             <div className="h-px bg-slate-800 my-1" />
 
-                            {APPS_CATALOG.map((app) => (
+                            {APPS_CATALOG.map((app: AppCatalogEntry) => (
                                 <DropdownMenu.Item key={app.id} asChild>
                                     <a
                                         href={app.url}

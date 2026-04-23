@@ -9,7 +9,10 @@ import {
     ChevronRight,
     Wrench,
     HelpCircle,
-    MessageSquare
+    MessageSquare,
+    ScrollText,
+    Activity,
+    Waves,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,9 +25,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     const navItems = [
         { href: '/', label: 'Overview', icon: LayoutDashboard },
+        { href: '/status', label: 'Status', icon: Activity },
+        { href: '/audio', label: 'Audio', icon: Waves },
         { href: '/apps', label: 'Apps', icon: LayoutGrid },
         { href: '/chat', label: 'AI Command', icon: MessageSquare },
         { href: '/tools', label: 'MCP Tools', icon: Wrench },
+        { href: '/logs', label: 'Logger', icon: ScrollText },
         { href: '/help', label: 'Help', icon: HelpCircle },
         { href: '/settings', label: 'Settings', icon: Settings },
     ];

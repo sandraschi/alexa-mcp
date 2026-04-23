@@ -10,6 +10,28 @@ from fastmcp import FastMCP
 from pydantic import BaseModel
 
 from .ai import router as ai_router
+from .auth import authenticate
+from .playback_api import router as playback_router
+
+
+def _serialize_tool_result(result: object) -> object:
+    """Normalize FastMCP ``call_tool`` return values for JSON HTTP responses."""
+    if result is None:
+        return None
+    content = getattr(result, "content", None)
+    if content is not None:
+        texts: list[str] = []
+        for part in content:
+            text = getattr(part, "text", None)
+            if text is not None:
+                texts.append(text)
+        if texts:
+            return "\n".join(texts)
+    if isinstance(result, str | int | float | bool):
+        return result
+    if isinstance(result, dict | list):
+        return result
+    return str(result)
 
 
 class ToolExecutionRequest(BaseModel):
@@ -31,9 +53,8 @@ class LaunchRequest(BaseModel):
 
     repo_path: str
     app_id: str
+    port: int | None = None  # optional; echoed from fleet UI for validation/logging
 
-
-from .auth import authenticate
 
 router = APIRouter(prefix="/api", dependencies=[Depends(authenticate)])
 
@@ -54,7 +75,7 @@ def register_tool_routes(mcp_app: FastMCP) -> None:
     async def execute_tool(tool_name: str, request: ToolExecutionRequest) -> dict[str, Any]:
         try:
             result = await mcp_app.call_tool(tool_name, request.arguments)
-            return {"result": result}
+            return {"result": _serialize_tool_result(result)}
         except Exception as e:
             return {"error": str(e)}
 
@@ -70,7 +91,7 @@ def register_tool_routes(mcp_app: FastMCP) -> None:
                     "timeout": request.timeout,
                 },
             )
-            return {"response": result}
+            return {"response": _serialize_tool_result(result)}
         except Exception as e:
             return {"response": f"Bridge Error: {e!s}"}
 
@@ -83,6 +104,7 @@ def setup_webapp(app: APIRouter | FastAPI, mcp_app: FastMCP | None = None) -> No
     # Include routers
     app.include_router(router)
     app.include_router(ai_router)
+    app.include_router(playback_router)
 
     # Serve static files if they exist
     if dist_dir.exists():

@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
     TrainFront,
     Video,
@@ -8,11 +9,8 @@ import {
     Box,
     User,
     BookOpen,
-    LayoutDashboard,
-    Monitor,
-    Zap,
-    Mic
-} from 'lucide-react';
+    Mic,
+} from "lucide-react";
 
 export interface FleetMember {
     id: string;
@@ -20,8 +18,16 @@ export interface FleetMember {
     description: string;
     port: number;
     repo_path: string;
-    icon: any;
-    category: 'Transit' | 'Media' | 'Infra' | 'Control' | 'Creative' | 'Knowledge' | 'Core';
+    icon: LucideIcon;
+    category: "Transit" | "Media" | "Infra" | "Control" | "Creative" | "Knowledge" | "Core";
+}
+
+/** Entries for the topbar app switcher (local fleet URLs). */
+export interface AppCatalogEntry {
+    id: string;
+    label: string;
+    url: string;
+    icon: LucideIcon;
 }
 
 export const FLEET_REGISTRY: FleetMember[] = [
@@ -143,3 +149,10 @@ export const FLEET_REGISTRY: FleetMember[] = [
         category: "Control"
     }
 ];
+
+export const APPS_CATALOG: AppCatalogEntry[] = FLEET_REGISTRY.map((m) => ({
+    id: m.id,
+    label: m.name,
+    url: `http://localhost:${m.port}`,
+    icon: m.icon,
+}));

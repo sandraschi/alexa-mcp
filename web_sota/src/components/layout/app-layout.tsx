@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 // import { Toaster } from '@/components/ui/toaster';
@@ -7,14 +7,16 @@ interface AppLayoutProps {
     children: React.ReactNode;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
-    const [collapsed, setCollapsed] = useState(false);
+function readSidebarCollapsed(): boolean {
+    try {
+        return typeof window !== 'undefined' && localStorage.getItem('sidebar-collapsed') === 'true';
+    } catch {
+        return false;
+    }
+}
 
-    // Persist sidebar state
-    useEffect(() => {
-        const stored = localStorage.getItem('sidebar-collapsed');
-        if (stored !== null) setCollapsed(stored === 'true');
-    }, []);
+export function AppLayout({ children }: AppLayoutProps) {
+    const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
 
     const handleToggle = () => {
         const newState = !collapsed;
