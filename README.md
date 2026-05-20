@@ -1,11 +1,25 @@
 # Alexa MCP - Industrial Acoustic Bridge
 
-[![FastMCP Version](https://img.shields.io/badge/FastMCP-3.2.0-blue?style=flat-square&logo=python&logoColor=white)](https://github.com/sandraschi/fastmcp) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![Linted with Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat-square&logo=biome&logoColor=white)](https://biomejs.dev/) [![Built with Just](https://img.shields.io/badge/Built_with-Just-000000?style=flat-square&logo=gnu-bash&logoColor=white)](https://github.com/casey/just)
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Industrial-cyan?style=for-the-badge&logo=probot&logoColor=white" alt="Industrial Status"/>
-  <img src="https://img.shields.io/badge/Standard-SOTA%20v14.1-blue?style=for-the-badge&logo=github&logoColor=white" alt="SOTA Standard"/>
-  <img src="https://img.shields.io/badge/Audio-Acoustic%20Bridge-orange?style=for-the-badge&logo=sounddevice&logoColor=white" alt="Audio Bridge"/>
+  <a href="https://github.com/casey/just"><img src="https://img.shields.io/badge/just-ready_to_go-7c5cfc?style=flat-square&logo=just&logoColor=white" alt="Just"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
+  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.13+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
+  <a href="https://github.com/PrefectHQ/fastmcp"><img src="https://img.shields.io/badge/FastMCP-3.2-7c5cfc?style=flat-square" alt="FastMCP"></a>
 </p>
+
+## Quick Start
+
+```powershell
+git clone https://github.com/sandraschi/alexa-mcp
+cd alexa-mcp
+just
+```
+
+This opens an interactive dashboard showing all available commands. Run `just bootstrap` to install dependencies, then `just serve` or `just dev` to start.
+
+### Manual Setup
+
+If you don't have `just` installed:
 
 ##  "The Pulse of the Smart Home"
 Transform your AI into a physical presence. The **Alexa Acoustic Bridge** allows agentic AI to issue verbal commands to Alexa devices and hear her responses perfectly, bridging the gap between digital intelligence and physical smart home hardware.
