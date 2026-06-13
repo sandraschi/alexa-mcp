@@ -33,4 +33,6 @@ async def test_api_logs() -> None:
         response = await ac.get("/api/logs", headers={"Authorization": f"Basic {auth_header}"})
 
     assert response.status_code == 200
-    assert "logs" in response.json()
+    data = response.json()
+    assert "entries" in data
+    assert "total" in data

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "@/common/api";
+import { runBridgeCommand } from "@/common/bridge-run";
 import { cn } from "@/common/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,23 +41,11 @@ export function Chat() {
         setIsLoading(true);
 
         try {
-            const clamped = Math.min(120, Math.max(1, Math.floor(listenSeconds)));
-            const res = await fetch(api.chatBridge, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    command: input,
-                    wait_for_response: waitForResponse,
-                    timeout: clamped,
-                }),
+            const text = await runBridgeCommand({
+                command: input,
+                waitForResponse,
+                timeout: listenSeconds,
             });
-            const data = (await res.json()) as { response?: unknown };
-            const text =
-                typeof data.response === "string"
-                    ? data.response
-                    : data.response != null
-                      ? JSON.stringify(data.response)
-                      : "No response from bridge.";
 
             const aiMsg: Message = {
                 role: 'assistant',

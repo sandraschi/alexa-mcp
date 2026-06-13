@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastmcp import FastMCP
 from pydantic import BaseModel
 
+from .activity_log import log_activity
 from .ai import router as ai_router
 from .auth import authenticate
 from .playback_api import router as playback_router
@@ -79,8 +80,20 @@ def register_tool_routes(mcp_app: FastMCP) -> None:
     async def execute_tool(tool_name: str, request: ToolExecutionRequest) -> dict[str, Any]:
         try:
             result = await mcp_app.call_tool(tool_name, request.arguments)
+            log_activity(
+                kind="tool_call",
+                detail=f"{tool_name} (ok)",
+                level="INFO",
+                meta={"tool": tool_name, "arguments": request.arguments},
+            )
             return {"result": _serialize_tool_result(result)}
         except Exception as e:
+            log_activity(
+                kind="tool_call",
+                detail=f"{tool_name} (error): {e!s}",
+                level="ERROR",
+                meta={"tool": tool_name, "arguments": request.arguments},
+            )
             return {"error": str(e)}
 
     @router.post("/chat")
@@ -95,8 +108,24 @@ def register_tool_routes(mcp_app: FastMCP) -> None:
                     "timeout": request.timeout,
                 },
             )
+            log_activity(
+                kind="bridge",
+                detail=f"chat: {request.command[:120]}",
+                level="INFO",
+                meta={
+                    "command": request.command,
+                    "wait_for_response": request.wait_for_response,
+                    "timeout": request.timeout,
+                },
+            )
             return {"response": _serialize_tool_result(result)}
         except Exception as e:
+            log_activity(
+                kind="bridge",
+                detail=f"chat error: {e!s}",
+                level="ERROR",
+                meta={"command": request.command},
+            )
             return {"response": f"Bridge Error: {e!s}"}
 
 

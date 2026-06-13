@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 import sys
-from collections import deque
 from datetime import UTC, datetime
 from typing import Any
 
@@ -11,35 +10,22 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastmcp import Context, FastMCP
 
+from .activity_log import install_log_handler, log_activity, query_logs
 from .audio import record_audio
 from .auth import authenticate
+from .logs_api import router as logs_router
 from .prefab_tools import register_prefab_tools
 from .stt import transcribe_audio
 from .tts import speak_text
 from .web import LaunchRequest, setup_webapp
 
-# Configure logging
-APP_LOG_BUFFER: deque[str] = deque(maxlen=800)
-
-
-class _MemoryLogHandler(logging.Handler):
-    """Ring buffer of formatted log lines for the webapp Logger page."""
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            APP_LOG_BUFFER.append(self.format(record))
-        except Exception:
-            self.handleError(record)
-
-
+# Configure logging (fleet ActivityLogHandler → /api/logs kind=server)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s - %(message)s",
     stream=sys.stderr,
 )
-_mem_handler = _MemoryLogHandler()
-_mem_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s - %(message)s"))
-logging.getLogger().addHandler(_mem_handler)
+install_log_handler()
 logger = logging.getLogger("alexa-mcp")
 
 # 1. Initialize FastMCP (Acoustic Protocol Layer)
@@ -47,22 +33,41 @@ app = FastMCP(
     "alexa-mcp",
 )
 
-# In-memory log buffer for the industrial dashboard
-INTERACTION_LOGS: list[dict[str, Any]] = []
-MAX_LOG_SIZE: int = 50
 INTERACTION_COUNT: int = 0
+
+
+def _record_interaction(full_command: str, transcription: str, *, success: bool) -> None:
+    global INTERACTION_COUNT
+    INTERACTION_COUNT += 1
+    detail = f"{full_command} → {transcription[:240] if transcription else '[no response]'}"
+    log_activity(
+        kind="interaction",
+        detail=detail,
+        level="INFO" if success else "ERROR",
+        meta={
+            "interaction_id": INTERACTION_COUNT,
+            "command": full_command,
+            "response": transcription,
+            "success": success,
+        },
+    )
 
 
 @app.resource("interaction://logs")
 def get_interaction_logs() -> str:
     """Return the most recent Alexa interaction logs as a formatted list."""
-    if not INTERACTION_LOGS:
+    payload = query_logs(limit=50, kind="interaction", sort="desc")
+    entries = payload.get("entries") or []
+    if not entries:
         return "No interactions logged yet."
 
     lines = ["# Alexa Interaction History"]
-    for log in INTERACTION_LOGS:
-        status = "✅" if log["success"] else "❌"
-        lines.append(f"- [{log['id']}] {status} `{log['command']}` -> {log['response']}")
+    for log in entries:
+        meta = log.get("meta") or {}
+        status = "✅" if meta.get("success", True) else "❌"
+        cmd = meta.get("command", log.get("detail", ""))
+        resp = meta.get("response", "")
+        lines.append(f"- [{meta.get('interaction_id', log.get('id'))}] {status} `{cmd}` -> {resp}")
     return "\n".join(lines)
 
 
@@ -193,20 +198,7 @@ async def interact(command: str, wait_for_response: bool = True, timeout: int = 
     transcription = await listen_for_response(duration=timeout)
     success = "[No speech detected]" not in transcription and "Error" not in transcription
 
-    # Log the interaction for the dashboard
-    global INTERACTION_COUNT
-    INTERACTION_COUNT += 1
-    log_entry = {
-        "id": INTERACTION_COUNT,
-        "command": full_command,
-        "response": transcription,
-        "success": success,
-        "timestamp": asyncio.get_event_loop().time(),
-        "recorded_at": datetime.now(UTC).isoformat(),
-    }
-    INTERACTION_LOGS.insert(0, log_entry)
-    if len(INTERACTION_LOGS) > MAX_LOG_SIZE:
-        INTERACTION_LOGS.pop()
+    _record_interaction(full_command, transcription, success=success)
 
     return _alexa_report(full_command, transcription, success=success)
 
@@ -273,10 +265,7 @@ async def get_status() -> dict[str, Any]:
     }
 
 
-@web_app.get("/api/logs", dependencies=[Depends(authenticate)])
-async def get_logs() -> dict[str, Any]:
-    """Interaction history and in-memory server log lines for the webapp."""
-    return {"logs": INTERACTION_LOGS, "app_lines": list(APP_LOG_BUFFER)}
+web_app.include_router(logs_router)
 
 
 @web_app.post("/api/fleet/launch", dependencies=[Depends(authenticate)])

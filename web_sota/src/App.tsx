@@ -3,10 +3,11 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { Dashboard } from '@/pages/dashboard';
 import { Apps } from '@/pages/apps';
 import { Chat } from '@/pages/chat';
+import { Playground } from '@/pages/playground';
 import { Tools } from '@/pages/tools';
 import { Help } from '@/pages/help';
 import { Settings } from '@/pages/settings';
-import { Logger } from '@/pages/logger';
+import { Logs } from '@/pages/logs';
 import { Status } from '@/pages/status';
 import { Audio } from '@/pages/audio';
 
@@ -20,8 +21,9 @@ function App() {
           <Route path="/audio" element={<Audio />} />
           <Route path="/apps" element={<Apps />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/playground" element={<Playground />} />
           <Route path="/tools" element={<Tools />} />
-          <Route path="/logs" element={<Logger />} />
+          <Route path="/logs" element={<Logs />} />
           <Route path="/help" element={<Help />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />

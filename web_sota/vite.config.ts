@@ -12,6 +12,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ['goliath'],
     port: 10800,
     strictPort: true,
     host: "127.0.0.1",

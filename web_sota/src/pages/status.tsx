@@ -65,7 +65,7 @@ export function Status() {
                         <Link to="/audio">Audio lab</Link>
                     </Button>
                     <Button variant="secondary" size="sm" className="bg-slate-800" asChild>
-                        <Link to="/logs">Logger</Link>
+                        <Link to="/logs">Logs</Link>
                     </Button>
                 </div>
             </div>

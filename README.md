@@ -45,6 +45,7 @@ The server acts as a localized proxy. It synthesizes natural language into neura
 | **Web app → Help** | Acoustic basics, Alexa+ / Austria testing, **Security & access**, automatic **TTS shopping guard** summary. |
 | **MCP `docs_help` tool** | Condensed technical protocol + ecosystem notes for clients. |
 | **MCP Central** | Fleet mirror: in a clone of `mcp-central-docs`, see `projects/alexa-mcp/README.md` and `CHANGELOG.md`. |
+| **[docs/VOICE_COMMAND_BUS.md](docs/VOICE_COMMAND_BUS.md)** | Spoken commands via speech-mcp → fleet-agent (not wake-word host). |
 
 ##  Installation & Orchestration
 
