@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, loadLlmSettings, saveLlmSettings } from "@/common/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, RefreshCw, Loader2 } from "lucide-react";
 
@@ -14,26 +12,55 @@ interface StatusPayload {
     standard?: string;
 }
 
-const DEFAULT_MODEL_FALLBACK = ["llama3.1:8b", "mistral:latest", "gemma2:2b"];
+function LLMSettings() {
+    const [providers, setProviders] = useState<Record<string, {name:string}[]>>({});
+    const [selectedProvider, setSelectedProvider] = useState("ollama");
+    const [selectedModel, setSelectedModel] = useState("");
+    const [status, setStatus] = useState<"loading"|"ready"|"error">("loading");
+    useEffect(() => {
+        fetch("/api/llm/providers").then(r => r.json()).then(d => {
+            setProviders(d);
+            const savedP = localStorage.getItem("llm_provider") || "ollama";
+            const savedM = localStorage.getItem("llm_model") || "";
+            setSelectedProvider(savedP);
+            const models = d[savedP === "ollama" ? "ollama" : "lm_studio"] || [];
+            setSelectedModel(savedM && models.some((m:{name:string}) => m.name === savedM) ? savedM : (models[0]?.name || ""));
+            setStatus(models.length > 0 ? "ready" : "error");
+        }).catch(() => {
+            setProviders({ ollama: [{name:"llama3.2:3b"}] });
+            setSelectedModel(localStorage.getItem("llm_model") || "llama3.2:3b");
+            setStatus("ready");
+        });
+    }, []);
+    const save = (p:string, m:string) => { localStorage.setItem("llm_provider", p); localStorage.setItem("llm_model", m); };
+    const models = providers[selectedProvider === "ollama" ? "ollama" : "lm_studio"] || [];
+    return (
+        <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 space-y-3">
+            <h3 className="text-sm font-medium text-slate-200">Local LLM</h3>
+            <Select value={selectedProvider} onValueChange={(v) => { setSelectedProvider(v); save(v, ""); }}>
+                <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                    <SelectItem value="ollama">Ollama</SelectItem>
+                    <SelectItem value="lm_studio">LM Studio</SelectItem>
+                </SelectContent>
+            </Select>
+            <Select value={selectedModel} onValueChange={(v) => { setSelectedModel(v); save(selectedProvider, v); }}>
+                <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                    {models.map((m) => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
 
 export function Settings() {
-    const [provider, setProvider] = useState("ollama");
-    const [model, setModel] = useState("llama3.1:8b");
-    const [endpoint, setEndpoint] = useState("http://127.0.0.1:11434");
     const [serverInfo, setServerInfo] = useState<StatusPayload | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
-    const [modelOptions, setModelOptions] = useState<string[]>([]);
-    const [modelsError, setModelsError] = useState<string | null>(null);
-    const [modelsLoading, setModelsLoading] = useState(false);
-
-    useEffect(() => {
-        const saved = loadLlmSettings();
-        if (saved) {
-            setProvider(saved.provider);
-            setModel(saved.model);
-            setEndpoint(saved.endpoint);
-        }
-    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -55,42 +82,6 @@ export function Settings() {
         };
     }, []);
 
-    const refreshModels = useCallback(async () => {
-        setModelsLoading(true);
-        setModelsError(null);
-        try {
-            const res = await fetch(api.aiModels(provider, endpoint));
-            const data = (await res.json()) as { models?: unknown; error?: string };
-            if (data.error) setModelsError(data.error);
-            const raw = data.models;
-            const names: string[] = [];
-            if (Array.isArray(raw)) {
-                for (const m of raw) {
-                    if (m && typeof m === "object" && "name" in m && typeof (m as { name: string }).name === "string") {
-                        names.push((m as { name: string }).name);
-                    }
-                }
-            }
-            setModelOptions(names);
-            if (names.length && !names.includes(model)) {
-                setModel(names[0]);
-            }
-        } catch (e) {
-            setModelsError(e instanceof Error ? e.message : String(e));
-        } finally {
-            setModelsLoading(false);
-        }
-    }, [provider, endpoint, model]);
-
-    const modelChoices = useMemo(() => {
-        const s = new Set([...DEFAULT_MODEL_FALLBACK, ...modelOptions, model]);
-        return [...s];
-    }, [modelOptions, model]);
-
-    const handleSave = () => {
-        saveLlmSettings({ provider, model, endpoint });
-    };
-
     return (
         <div className="space-y-6">
             <div>
@@ -108,71 +99,11 @@ export function Settings() {
                         <CardDescription className="text-slate-400">
                             Persists in the browser. The server calls Ollama from the machine running the API (default base{" "}
                             <code className="text-slate-300">http://127.0.0.1:11434</code>
-                            ). &quot;Refresh Models&quot; uses GET {api.aiModels("…", "…")} (Ollama <code className="text-slate-300">/api/tags</code>
                             ).
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            <Label className="text-slate-300">Provider</Label>
-                            <Select value={provider} onValueChange={setProvider}>
-                                <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100">
-                                    <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                                    <SelectItem value="ollama">Ollama</SelectItem>
-                                    <SelectItem value="lmstudio">LM Studio</SelectItem>
-                                    <SelectItem value="openai_compatible">OpenAI Compatible</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label className="text-slate-300">Endpoint URL</Label>
-                            <Input
-                                className="bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-400"
-                                value={endpoint}
-                                onChange={(e) => setEndpoint(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label className="text-slate-300">Model Selection</Label>
-                            <Select value={model} onValueChange={setModel}>
-                                <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100">
-                                    <SelectValue placeholder="Select model" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                                    {modelChoices.map((m) => (
-                                        <SelectItem key={m} value={m}>
-                                            {m}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {modelsError && <p className="text-sm text-amber-400">{modelsError}</p>}
-
-                        <div className="flex gap-2 pt-2 flex-wrap">
-                            <Button type="button" className="bg-blue-600 hover:bg-blue-700" onClick={handleSave}>
-                                <Save className="mr-2 h-4 w-4" /> Save Settings
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="border-slate-800 text-slate-300 hover:bg-slate-800"
-                                onClick={() => void refreshModels()}
-                                disabled={modelsLoading}
-                            >
-                                {modelsLoading ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                )}
-                                Refresh Models
-                            </Button>
-                        </div>
+                    <CardContent>
+                        <LLMSettings />
                     </CardContent>
                 </Card>
 
