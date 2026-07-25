@@ -1,0 +1,6 @@
+{
+  "name": "alexa-mcp",
+  "version": "0.3.0",
+  "description": "Alexa Acoustic Bridge - voice control for Alexa devices via TTS/STT",
+  "hooks": "../hooks/hooks.json"
+}

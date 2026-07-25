@@ -1,4 +1,5 @@
-﻿set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+import 'scripts/just/fleet.just'
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
@@ -10,8 +11,7 @@ default:
 
 # Start the full web gateway and backend bridge
 dev:
-    Set-Location '{{justfile_directory()}}/web_sota'
-    powershell -File start.ps1
+    pwsh -NoProfile -File '{{justfile_directory()}}\start.ps1'
 
 # Build the frontend production bundle
 build:
@@ -34,18 +34,39 @@ lint:
 
 # Execute Ruff SOTA v14.1 fix and formatting
 fix:
-    uv run ruff check . --fix --unsafe-fixes
+    uv run ruff check . --fix
     uv run ruff format .
     Set-Location '{{justfile_directory()}}\web_sota'
     npx @biomejs/biome check --write .
 
 # Execute the professional test suite
 test:
-    uv run pytest tests/
+    uv run pytest tests/ -q
 
-# Generate test coverage report
-coverage:
-    uv run pytest --cov=src tests/
+# Gates: lint + test
+certify: lint test
+
+# ── Packaging ─────────────────────────────────────────────────────────────────
+
+# Build the PyInstaller backend .exe and copy to Tauri resources
+build-sidecar:
+    pwsh -NoProfile -File '{{justfile_directory()}}\native\build.ps1'
+
+# Build Tauri NSIS desktop installer
+build-native:
+    Set-Location '{{justfile_directory()}}\native'
+    $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+    pwsh -NoProfile -File .\build.ps1
+
+# Pack MCPB bundle for Claude Desktop
+mcpb-pack:
+    uv run python scripts/mcpb-pack.ps1
+
+# Run CUA-NSIS smoke test (install -> launch -> verify -> uninstall)
+cua-nsis-test:
+    uv run python scripts/cua-smoke.py
+
+# ── Legacy ───────────────────────────────────────────────────────────────────
 
 # Execute a direct acoustic verification test
 live-test:
@@ -65,4 +86,3 @@ clean:
 # Verify local audio device connectivity
 verify:
     uv run python verify_setup.py
-

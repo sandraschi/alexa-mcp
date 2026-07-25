@@ -10,6 +10,8 @@ import { Settings } from '@/pages/settings';
 import { Logs } from '@/pages/logs';
 import { Status } from '@/pages/status';
 import { Audio } from '@/pages/audio';
+import { Schedule } from '@/pages/schedule';
+import { Presets } from '@/pages/presets';
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/schedule" element={<Schedule />} />
+          <Route path="/presets" element={<Presets />} />
           <Route path="/logs" element={<Logs />} />
           <Route path="/help" element={<Help />} />
           <Route path="/settings" element={<Settings />} />

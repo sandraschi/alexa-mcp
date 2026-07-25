@@ -1,13 +1,17 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 .pytest_cache/
 .ruff_cache/
 .venv/
+*.egg-info/
+dist/
+build/
+.eggs/
 
 # Node.js / Vite
 node_modules/
-dist/
 dist-ssr/
 *.local
 .eslintcache
@@ -19,16 +23,6 @@ lerna-debug.log*
 .next/
 out/
 
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.pytest_cache/
-*.egg-info/
-dist/
-build/
-.eggs/
-
 # IDE and OS-specific
 .DS_Store
 Thumbs.db
@@ -36,7 +30,20 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-# Rust / Zed IDE — rust-analyzer may create target/ at repo root
+
+# Rust / Zed IDE
 target/
 
+# Build artifacts
+*.mcpb
+*.bak
+native/target/
+native/gen/
+native/resources/*.exe
+native/binaries/*.exe
+
+# Reports
+reports/
+
+# Dashboards
 _dashboard/

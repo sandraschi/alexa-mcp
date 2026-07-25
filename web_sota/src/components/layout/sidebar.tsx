@@ -14,6 +14,8 @@ import {
     Activity,
     Waves,
     FlaskConical,
+    Clock,
+    ListOrdered,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,6 +33,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         { href: '/apps', label: 'Apps', icon: LayoutGrid },
         { href: '/playground', label: 'Playground', icon: FlaskConical },
         { href: '/chat', label: 'AI Command', icon: MessageSquare },
+        { href: '/schedule', label: 'Schedule', icon: Clock },
+        { href: '/presets', label: 'Presets', icon: ListOrdered },
         { href: '/tools', label: 'MCP Tools', icon: Wrench },
         { href: '/logs', label: 'Logs', icon: ScrollText },
         { href: '/help', label: 'Help', icon: HelpCircle },

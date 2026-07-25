@@ -19,8 +19,8 @@ def register_prefab_tools(mcp: FastMCP) -> None:
 
         Plain-text summary is always returned for hosts that do not render Apps.
         """
-        from alexa_mcp.activity_log import max_entries, query_logs
         import alexa_mcp.server as srv
+        from alexa_mcp.activity_log import max_entries, query_logs
 
         payload = query_logs(limit=20, kind="interaction", sort="desc")
         logs: list[dict[str, Any]] = payload.get("entries") or []

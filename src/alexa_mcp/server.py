@@ -1,10 +1,15 @@
 import asyncio
 import logging
 import os
+import platform
 import sys
-from datetime import UTC, datetime
+import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
+import httpx
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +20,20 @@ from .audio import record_audio
 from .auth import authenticate
 from .logs_api import router as logs_router
 from .prefab_tools import register_prefab_tools
+from .scheduler import (
+    create_preset,
+    create_scheduled_command,
+    delete_preset,
+    delete_scheduled_command,
+    get_analytics,
+    get_preset,
+    list_presets,
+    list_scheduled_commands,
+    run_preset_steps,
+    scheduler_loop,
+    update_preset,
+    update_scheduled_command,
+)
 from .stt import transcribe_audio
 from .tts import speak_text
 from .web import LaunchRequest, setup_webapp
@@ -34,6 +53,13 @@ app = FastMCP(
 )
 
 INTERACTION_COUNT: int = 0
+_START_TIME: float = time.time()
+
+
+def _error_response(error: str, error_type: str = "general", **kwargs: object) -> dict[str, object]:
+    """Auto-logging error response — traceback logged before returning to caller."""
+    logger.exception("Tool error: %s [%s]", error, error_type)
+    return {"success": False, "error": error, "error_type": error_type, **kwargs}
 
 
 def _record_interaction(full_command: str, transcription: str, *, success: bool) -> None:
@@ -92,7 +118,10 @@ def alexa_interaction_prompt(command: str) -> str:
     return f"Issue the following command to Alexa via the acoustic bridge: '{command}'. Wait for her response."
 
 
-@app.tool()
+_READONLY = {"readonly": True}
+
+
+@app.tool(annotations=_READONLY)
 async def docs_help() -> str:
     """Return technical documentation for the Alexa Acoustic Bridge.
 
@@ -139,11 +168,18 @@ async def docs_help() -> str:
     return "\n".join(lines)
 
 
-@app.tool()
+@app.tool(annotations=_READONLY)
 async def speak_command(text: str) -> str:
     r"""Synthesize and speak the given text via the default speaker.
 
     Use this to issue commands to Alexa (e.g., \"Alexa, what time is it?\").
+
+    ## Return Format
+    Success: "✅ Successfully synthesized and spoke: `{text}`"
+    Error: "❌ Error speaking command: **{error}**"
+
+    ## Examples
+    speak_command("Alexa, what time is it?")
     """
     try:
         output_file = "temp_command.wav"
@@ -154,11 +190,19 @@ async def speak_command(text: str) -> str:
         return f"❌ Error speaking command: **{e}**"
 
 
-@app.tool()
+@app.tool(annotations=_READONLY)
 async def listen_for_response(duration: int = 10) -> str:
     """Listen to the microphone for a period and transcribe the audio.
 
     Use this to capture Alexa's response.
+
+    ## Return Format
+    Success: Transcribed text string.
+    Silence: "[No speech detected]"
+    Error: "❌ Error listening: {error}"
+
+    ## Examples
+    listen_for_response(duration=10)
     """
     try:
         logger.info(f"Listening for {duration} seconds...")
@@ -171,13 +215,20 @@ async def listen_for_response(duration: int = 10) -> str:
         return f"❌ Error listening: {e!s}"
 
 
-@app.tool()
+@app.tool(annotations=_READONLY)
 async def interact(command: str, wait_for_response: bool = True, timeout: int = 10) -> str:
     r"""Run the full acoustic interaction loop.
 
     1. Prepend \"Alexa\" wake word if missing.
     2. Speak command via default audio output.
     3. Capture microphone response via whisper transcription.
+
+    ## Return Format
+    "# ✅ Alexa Interaction Report\n- **Command**: `{command}`\n- **Response**: {transcription}"
+
+    ## Examples
+    interact("what time is it?")
+    interact("turn on the lights", wait_for_response=False)
     """
     # Prepend Alexa if missing, to ensure she wakes up
     clean_command = command.strip()
@@ -203,11 +254,17 @@ async def interact(command: str, wait_for_response: bool = True, timeout: int = 
     return _alexa_report(full_command, transcription, success=success)
 
 
-@app.tool()
+@app.tool(annotations=_READONLY)
 async def agentic_alexa_query(query: str, ctx: Context) -> str:
     """Refine the command using host sampling before speaking.
 
     Ensures the natural language query is translated into a clear Alexa command.
+
+    ## Return Format
+    Same as interact() — interaction report markdown string.
+
+    ## Examples
+    agentic_alexa_query("ask alexa what the weather will be like tomorrow")
     """
     prompt = (
         f"Translate this user query into a clear, concise Alexa command: '{query}'. "
@@ -227,22 +284,76 @@ async def agentic_alexa_query(query: str, ctx: Context) -> str:
     return await interact(refined_command)
 
 
+@app.tool(annotations={"destroy": True})
+async def alexa_mcp_shutdown(confirm: bool = False) -> str:
+    """Shut down the Alexa MCP server gracefully.
+
+    Requires confirm=True to prevent accidental termination.
+
+    ## Return Format
+    "Shutting down..." on success.
+
+    ## Examples
+    alexa_mcp_shutdown(confirm=True)
+    """
+    if not confirm:
+        return "Shutdown aborted — set confirm=True to proceed."
+    logger.warning("Shutdown requested via MCP tool")
+    task = asyncio.create_task(_do_shutdown())
+    task.add_done_callback(lambda t: logger.info("Shutdown task done"))
+    return "Shutting down..."
+
+
+async def _do_shutdown() -> None:
+    await asyncio.sleep(0.5)
+    os._exit(0)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Start the background scheduler on app startup."""
+    loop = asyncio.get_event_loop()
+    _sched_task = loop.create_task(scheduler_loop(speak_command))
+    _sched_task.add_done_callback(lambda t: logger.info("Scheduler task ended"))
+    yield
+    from .scheduler import stop_scheduler as _stop
+
+    _stop()
+
+
 # 2. Initialize FastAPI (Web Management Layer)
 web_app = FastAPI(
     title="Alexa Control Web Bridge",
     description="Industrial management bridge for the Alexa Acoustic MCP fleet.",
     version="0.3.0",
+    lifespan=lifespan,
     # Auth is applied per-route on API endpoints only; static assets must be unauthenticated
     # so the browser can load JS/CSS after the initial Basic Auth challenge on index.html.
 )
 
+_is_tauri = os.environ.get("ALEXA_MCP_TAURI", "").lower() in ("1", "true", "yes")
 web_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:10800",
+        "http://127.0.0.1:10800",
+        "http://localhost:10801",
+        "http://127.0.0.1:10801",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+        "tauri://localhost",
+    ],
+    allow_origin_regex=r"https?://(?:[a-zA-Z0-9-]+\.ts\.net|.*?\.tail-[a-f0-9]+\.ts\.net|tauri\.localhost|localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|100\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?$|^tauri://localhost$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@web_app.get("/api/health")
+async def get_health() -> dict[str, str]:
+    """Liveness probe for health checks."""
+    return {"status": "ok", "service": "alexa-mcp"}
 
 
 @web_app.get("/api/status", dependencies=[Depends(authenticate)])
@@ -294,6 +405,219 @@ async def launch_fleet_app(request: LaunchRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Launch failure: {e}")
         return {"error": str(e)}
+
+
+@web_app.get("/api/v1/diagnostics")
+async def get_diagnostics() -> dict[str, Any]:
+    """Full diagnostics — tool list, system info, errors.
+
+    Required for CUA-NSIS smoke testing.
+    """
+    return {
+        "status": "ok",
+        "server": "alexa-mcp",
+        "version": "0.3.0",
+        "uptime_seconds": int(time.time() - _START_TIME),
+        "tool_count": 5,
+        "tools": [
+            {"name": "docs_help"},
+            {"name": "speak_command"},
+            {"name": "listen_for_response"},
+            {"name": "interact"},
+            {"name": "agentic_alexa_query"},
+            {"name": "alexa_mcp_shutdown"},
+        ],
+        "system": {
+            "platform": platform.system(),
+            "python": platform.python_version(),
+        },
+        "errors": [],
+    }
+
+
+@web_app.get("/api/skills")
+async def get_skills() -> list[dict[str, str]]:
+    """List available skills."""
+    return [{"name": "alexa-bridge", "uri": "skill://alexa-bridge/SKILL.md"}]
+
+
+@web_app.get("/api/skills/{skill_name}")
+async def get_skill_content(skill_name: str) -> str:
+    """Return the raw SKILL.md content for a skill."""
+    skill_path = Path(__file__).parent / "skills" / skill_name / "SKILL.md"
+    if skill_path.exists():
+        return skill_path.read_text(encoding="utf-8")
+    return "not found"
+
+
+@web_app.get("/api/llm/discover")
+async def discover_llm() -> dict[str, Any]:
+    """Probe for local LLM providers (Ollama, LM Studio)."""
+    providers: list[dict[str, Any]] = []
+    probes = [
+        ("ollama", "http://127.0.0.1:11434/api/tags"),
+        ("lm_studio", "http://127.0.0.1:1234/v1/models"),
+        ("vllm", "http://127.0.0.1:8000/v1/models"),
+    ]
+    for name, url in probes:
+        try:
+            async with httpx.AsyncClient(timeout=3) as client:
+                r = await client.get(url)
+                if r.status_code == 200:
+                    providers.append({"name": name, "detected": True, "url": url.rsplit("/", 1)[0]})
+                    continue
+        except Exception:
+            logger.debug("LLM provider %s not detected at %s", name, url)
+        providers.append({"name": name, "detected": False})
+
+    return {"providers": providers}
+
+
+@web_app.get("/api/capabilities")
+async def get_capabilities() -> dict[str, Any]:
+    """Return server capabilities for dynamic feature discovery."""
+    return {
+        "server": "alexa-mcp",
+        "version": "0.3.0",
+        "features": {
+            "chat": bool(os.getenv("OLLAMA_URL")),
+            "skills": True,
+            "tools": True,
+            "llm_discovery": True,
+        },
+    }
+
+
+# --- Scheduler Endpoints ---
+
+
+@web_app.get("/api/scheduler/commands")
+async def api_list_scheduled() -> list[dict[str, Any]]:
+    """List all scheduled commands."""
+    return list_scheduled_commands()
+
+
+@web_app.post("/api/scheduler/commands")
+async def api_create_scheduled(body: dict[str, Any]) -> dict[str, Any]:
+    """Create a scheduled command."""
+    return create_scheduled_command(
+        command=body["command"],
+        cron_expr=body["cron_expr"],
+        label=body.get("label", ""),
+    )
+
+
+@web_app.put("/api/scheduler/commands/{cmd_id}")
+async def api_update_scheduled(cmd_id: int, body: dict[str, Any]) -> dict[str, Any]:
+    """Update a scheduled command."""
+    result = update_scheduled_command(cmd_id, **body)
+    if result is None:
+        return {"error": "not found"}
+    return result
+
+
+@web_app.delete("/api/scheduler/commands/{cmd_id}")
+async def api_delete_scheduled(cmd_id: int) -> dict[str, Any]:
+    """Delete a scheduled command."""
+    deleted = delete_scheduled_command(cmd_id)
+    return {"deleted": deleted}
+
+
+# --- Presets Endpoints ---
+
+
+@web_app.get("/api/presets")
+async def api_list_presets() -> list[dict[str, Any]]:
+    """List all command presets."""
+    return list_presets()
+
+
+@web_app.get("/api/presets/{preset_id}")
+async def api_get_preset(preset_id: int) -> dict[str, Any]:
+    """Get a preset with steps."""
+    preset = get_preset(preset_id)
+    if preset is None:
+        return {"error": "not found"}
+    return preset
+
+
+@web_app.post("/api/presets")
+async def api_create_preset(body: dict[str, Any]) -> dict[str, Any]:
+    """Create a command preset."""
+    return create_preset(
+        name=body["name"],
+        description=body.get("description", ""),
+        steps=body.get("steps"),
+    )
+
+
+@web_app.put("/api/presets/{preset_id}")
+async def api_update_preset(preset_id: int, body: dict[str, Any]) -> dict[str, Any]:
+    """Update a preset."""
+    result = update_preset(
+        preset_id,
+        name=body.get("name"),
+        description=body.get("description"),
+        steps=body.get("steps"),
+    )
+    if result is None:
+        return {"error": "not found"}
+    return result
+
+
+@web_app.delete("/api/presets/{preset_id}")
+async def api_delete_preset(preset_id: int) -> dict[str, Any]:
+    """Delete a command preset."""
+    deleted = delete_preset(preset_id)
+    return {"deleted": deleted}
+
+
+@web_app.post("/api/presets/{preset_id}/run")
+async def api_run_preset(preset_id: int) -> dict[str, Any]:
+    """Execute a preset's command sequence."""
+    preset = get_preset(preset_id)
+    if preset is None:
+        return {"error": "not found"}
+    steps = preset.get("steps", [])
+    results = run_preset_steps(steps, lambda cmd: "ok")
+    return {"preset": preset["name"], "results": results}
+
+
+# --- Announce Endpoint (Fleet Integration) ---
+
+
+@web_app.post("/api/announce")
+async def api_announce(body: dict[str, Any]) -> dict[str, Any]:
+    """Fleet-wide announce endpoint — speaks text via the acoustic bridge.
+
+    Call from other MCP servers to make announcements via Alexa.
+    """
+    text = body.get("text", "")
+    if not text:
+        return {"error": "text is required"}
+    token = os.getenv("ALEXA_ANNOUNCE_TOKEN", "")
+    header_token = body.get("token", "")
+    if token and header_token != token:
+        return {"error": "unauthorized"}
+    try:
+        output_file = "temp_announce.wav"
+        from .tts import speak_text
+
+        await speak_text(text, output_file=output_file)
+        log_activity("announce", f"Announced: {text[:120]}", level="INFO")
+        return {"status": "ok", "spoken": text}
+    except Exception as e:
+        logger.error("Announce failed: %s", e)
+        return {"error": str(e)}
+
+
+# --- Analytics ---
+
+
+@web_app.get("/api/analytics/stats")
+async def api_analytics() -> dict[str, Any]:
+    """Return aggregated analytics for the dashboard."""
+    return get_analytics(days=7)
 
 
 # Prefab (MCP Apps) — fleet list/status surface

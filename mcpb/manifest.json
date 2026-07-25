@@ -1,0 +1,42 @@
+{
+  "manifest_version": "0.2",
+  "name": "alexa-mcp",
+  "version": "0.3.0",
+  "description": "Alexa Acoustic Bridge - SOTA v14.1 Industrial MCP Server",
+  "author": { "name": "sandraschi" },
+  "server": {
+    "type": "python",
+    "entry_point": "src/alexa_mcp/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run","--directory","${PWD}","python","-m","alexa_mcp"],
+      "env": {
+        "PYTHONPATH": "${PWD}/src",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  },
+  "tools": [
+    { "name": "list_models", "description": "list_models" },
+    { "name": "logs_query", "description": "logs_query" },
+    { "name": "logs_stats", "description": "logs_stats" },
+    { "name": "logs_export", "description": "logs_export" },
+    { "name": "logs_clear", "description": "logs_clear" },
+    { "name": "activity_feed", "description": "activity_feed" },
+    { "name": "get_playback", "description": "get_playback" },
+    { "name": "put_playback", "description": "put_playback" },
+    { "name": "post_playback_test", "description": "post_playback_test" },
+    { "name": "show_alexa_interaction_status_prefab_card", "description": "show_alexa_interaction_status_prefab_card" },
+    { "name": "docs_help", "description": "docs_help" },
+    { "name": "speak_command", "description": "speak_command" },
+    { "name": "listen_for_response", "description": "listen_for_response" },
+    { "name": "interact", "description": "interact" },
+    { "name": "agentic_alexa_query", "description": "agentic_alexa_query" },
+    { "name": "main_stdio", "description": "main(stdio)" },
+    { "name": "main_http", "description": "main(http)" },
+    { "name": "main_sse", "description": "main(sse)" },
+    { "name": "list_tools", "description": "list_tools" },
+    { "name": "execute_tool", "description": "execute_tool" },
+    { "name": "chat_bridge", "description": "chat_bridge" }
+  ]
+}

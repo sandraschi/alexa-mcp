@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
+import { useZoom } from '@/lib/use-zoom';
 // import { Toaster } from '@/components/ui/toaster';
 
 interface AppLayoutProps {
@@ -17,6 +18,7 @@ function readSidebarCollapsed(): boolean {
 
 export function AppLayout({ children }: AppLayoutProps) {
     const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
+    useZoom();
 
     const handleToggle = () => {
         const newState = !collapsed;

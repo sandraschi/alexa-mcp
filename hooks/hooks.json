@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "text",
+        "text": "## Session Context (Alexa MCP)\n\nYou can issue verbal commands to Alexa devices and hear her responses via TTS/STT.\n\n**Before starting work:**\n1. Try a command: interact(command=\"what time is it?\", wait_for_response=true)\n2. Check current status: docs_help()\n\n**At end of work:**\n- If you issued important commands, note the response in your session notes"
+      }]
+    }]
+  }
+}

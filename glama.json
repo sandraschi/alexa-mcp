@@ -24,6 +24,10 @@
     {
       "name": "agentic_alexa_query",
       "description": "Advanced agentic refinement of user queries before voice synthesis."
+    },
+    {
+      "name": "docs_help",
+      "description": "Return technical documentation for the Alexa Acoustic Bridge."
     }
   ]
 }

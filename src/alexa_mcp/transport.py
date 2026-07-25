@@ -33,6 +33,8 @@ import logging
 import os
 from typing import TYPE_CHECKING, Literal
 
+import uvicorn
+
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
@@ -237,14 +239,18 @@ async def run_server_async(
             path = config["path"]
             endpoint = f"http://{host}:{port}{path}"
             logger.info(f"Running in HTTP Streamable mode: {endpoint}")
-            await mcp_app.run_http_async(host=host, port=port, path=path)
+            # Use uvicorn on http_app() (not run_http_async) to keep CORS middleware
+            http_app = mcp_app.http_app()
+            config_obj = uvicorn.Config(http_app, host=host, port=port, log_level="info")
+            server = uvicorn.Server(config_obj)
+            await server.serve()
 
         elif transport == "sse":
             host = config["host"]
             port = config["port"]
             logger.warning("SSE mode is deprecated. Migrate to HTTP Streamable (--http).")
             logger.info(f"Running in SSE mode: http://{host}:{port}")
-            await mcp_app.run_async(transport='sse', host=host, port=port)
+            await mcp_app.run_async(transport="sse", host=host, port=port)
 
     except asyncio.CancelledError:
         logger.info(f"{server_name} task cancelled")

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "../lib/api";
 import { api, loadLlmSettings, saveLlmSettings } from "@/common/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ function LLMSettings() {
     const [selectedModel, setSelectedModel] = useState("");
     const [status, setStatus] = useState<"loading"|"ready"|"error">("loading");
     useEffect(() => {
-        fetch("/api/llm/providers").then(r => r.json()).then(d => {
+        fetch(API_BASE + "/api/llm/providers").then(r => r.json()).then(d => {
             setProviders(d);
             const savedP = localStorage.getItem("llm_provider") || "ollama";
             const savedM = localStorage.getItem("llm_model") || "";

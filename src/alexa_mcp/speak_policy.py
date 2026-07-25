@@ -27,13 +27,16 @@ _ADD_TO_CART = re.compile(
 
 def _media_intent(s: str) -> bool:
     """Return whether the line is plausibly about Amazon media, not shopping."""
-    return re.search(
-        r"(?i)amazon( prime)?\s+(music|video|luna|photos|kids|reading|classroom|studios)\b|"
-        r"prime video|watch on amazon|"
-        r"\bplay( some| my)?\s+.*\b(amazon|prime music|audible)\b|"
-        r"on\s+amazon\s*(music|video|prime video)\b",
-        s,
-    ) is not None
+    return (
+        re.search(
+            r"(?i)amazon( prime)?\s+(music|video|luna|photos|kids|reading|classroom|studios)\b|"
+            r"prime video|watch on amazon|"
+            r"\bplay( some| my)?\s+.*\b(amazon|prime music|audible)\b|"
+            r"on\s+amazon\s*(music|video|prime video)\b",
+            s,
+        )
+        is not None
+    )
 
 
 def _has_amazon_commerce_context(s: str) -> bool:
