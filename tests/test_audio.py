@@ -1,10 +1,8 @@
 """Tests for alexa_mcp.audio — all hardware mocked via conftest."""
 
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
-import os
-
 
 # ---------------------------------------------------------------------------
 # play_audio_file
@@ -17,22 +15,26 @@ class TestPlayAudioFile:
         with pytest.raises(FileNotFoundError, match="not found"):
             play_audio_file("/nonexistent/path/audio.wav")
 
-    def test_plays_existing_file(self, tmp_wav, mock_sounddevice, mock_scipy_wavfile):
+    def test_plays_existing_file(self, tmp_wav, mock_scipy_wavfile, mocker):
+        mock_play = mocker.patch("alexa_mcp.audio.play_with_meter")
         from alexa_mcp.audio import play_audio_file
 
         play_audio_file(tmp_wav)
 
         mock_scipy_wavfile.read.assert_called_once_with(tmp_wav)
-        mock_sounddevice.play.assert_called_once()
-        mock_sounddevice.wait.assert_called_once()
+        mock_play.assert_called_once()
+        _, kwargs = mock_play.call_args
+        assert kwargs.get("blocking") is True
 
-    def test_passes_device_argument(self, tmp_wav, mock_sounddevice, mock_scipy_wavfile):
+    def test_passes_device_argument(self, tmp_wav, mock_scipy_wavfile, mocker):
+        mock_play = mocker.patch("alexa_mcp.audio.play_with_meter")
         from alexa_mcp.audio import play_audio_file
 
         play_audio_file(tmp_wav, device=2)
 
-        _, kwargs = mock_sounddevice.play.call_args
-        assert kwargs.get("device") == 2 or mock_sounddevice.play.call_args[0][2] == 2
+        mock_play.assert_called_once()
+        _, kwargs = mock_play.call_args
+        assert kwargs.get("device") == 2
 
 
 # ---------------------------------------------------------------------------
