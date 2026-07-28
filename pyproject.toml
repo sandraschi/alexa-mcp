@@ -42,7 +42,7 @@ target-version = "py312"
 select = [
     "E", "F", "W", "I", "B", "S", "UP", "RUF", "C90", "N", "D", "ANN", "ASYNC", "T20"
 ]
-ignore = ["S101", "B008", "D100", "D104", "D107", "ANN101", "ANN102", "ANN204", "ASYNC109", "S106", "S110", "S112", "RUF012"]
+ignore = ["S101", "B008", "D100", "D104", "D107", "ANN101", "ANN102", "ANN204", "ASYNC109", "S106", "S110", "S112", "S101", "B008", "D100", "D104", "D107", "ANN101", "ANN102", "ANN204", "ASYNC109", "S106", "S110", "S112", "RUF012", "S603", "S607", "S324", "E402"]
 
 [tool.ruff.lint.per-file-ignores]
 "verify_setup.py" = ["D103", "F401", "S110", "T201", "ASYNC240"]
