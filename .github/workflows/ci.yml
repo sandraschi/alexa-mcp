@@ -1,24 +1,24 @@
 name: CI
-
 on:
   push:
-    branches: [master]
+    branches: [main, master]
   pull_request:
-    branches: [master]
-
+    branches: [main, master]
+  workflow_dispatch:
 jobs:
-  lint-and-test:
+  check:
+    name: Lint and Test (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - name: Install Python deps
-        run: uv sync
-      - name: Ruff check
-        run: uv run ruff check src/
-      - name: Ruff format check
-        run: uv run ruff format src/ --check
-      - name: Run tests
-        run: uv run pytest tests/ -q --tb=short
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - run: uv run ruff check src
+      - run: uv run ruff format --check src
+      - run: uv run pytest -q --tb=short tests/
