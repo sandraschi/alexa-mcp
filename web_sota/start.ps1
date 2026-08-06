@@ -1,87 +1,37 @@
-Param([switch]$Headless)
-$SkipFrontend = $Headless
+﻿# Fleet unified launcher - do not edit logic here.
+# Change fleet-start.config.ps1 at the repo root instead.
+param(
+    [switch]$Headless,
+    [switch]$BackendOnly,
+    [switch]$FrontendOnly,
+    [switch]$NoBrowser,
+    [switch]$ReuseIfRunning
+)
 
-# --- SOTA Headless Standard ---
-if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
-    Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Headless' -WindowStyle Hidden
-    exit
-}
-$WindowStyle = if ($Headless) { 'Hidden' } else { 'Normal' }
-# ------------------------------
-
-# Alexa MCP Web Gateway - SOTA v14.1 Industrial Start
-$WebPort = 10800
-$BackendPort = 10801
-$FleetStartPath = Join-Path $ProjectRoot "scripts\FleetStartMode.ps1"
-if (-not (Test-Path -LiteralPath $FleetStartPath)) {
-    Write-Host "ERROR: Missing vendored launcher helper: $FleetStartPath" -ForegroundColor Red
+$ErrorActionPreference = 'Stop'
+$ReposRoot = if ($env:FLEET_REPOS_ROOT) { $env:FLEET_REPOS_ROOT } else { 'D:\Dev\repos' }
+$EnginePath = Join-Path $ReposRoot 'mcp-central-docs\scripts\Invoke-FleetWebappStart.ps1'
+if (-not (Test-Path -LiteralPath $EnginePath)) {
+    Write-Host "ERROR: Missing fleet start engine: $EnginePath" -ForegroundColor Red
     exit 1
 }
-. $FleetStartPath
+. $EnginePath
 
-$ProjectRoot = Split-Path -Parent $PSScriptRoot
-
-# 1. Purge Port Squatters
-Write-Host " [CLEAN] Checking for port squatters on $WebPort and $BackendPort..." -ForegroundColor Yellow
-$pids = Get-NetTCPConnection -LocalPort $WebPort, $BackendPort -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -gt 4 } | Select-Object -ExpandProperty OwningProcess -Unique
-foreach ($p in $pids) {
-    Write-Host " [KILL] Terminating PID: $p" -ForegroundColor Red
-    try { Stop-Process -Id $p -Force -ErrorAction Stop } catch { Write-Host " [WARN] Could not terminate $p." -ForegroundColor Gray }
-}
-
-# 2. Environment Setup
-Set-Location $PSScriptRoot
-if (-not (Test-Path "node_modules")) { 
-    Write-Host " [INSTALL] Node modules missing. Running npm install..." -ForegroundColor Cyan
-    npm install 
-}
-
-# 3. Start Backend Bridge (Industrial Gateway)
-Write-Host " [BACKEND] Starting Alexa MCP Bridge on port $BackendPort..." -ForegroundColor Cyan
-$srcPath = Join-Path $ProjectRoot "src"
-# Use asgi_app to ensure the Web Bridge (FastAPI) is served, not just the Protocol layer
-$backendCmd = "Set-Location '$ProjectRoot'; `$env:PYTHONPATH = '$srcPath'; uv run uvicorn alexa_mcp.server:asgi_app --host 127.0.0.1 --port $BackendPort --log-level info"
-
-Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd -WindowStyle Normal
-
-# 3b. Wait until uvicorn is listening (Vite proxies /api to this port; starting Vite first causes ECONNREFUSED spam)
-Write-Host " [WAIT] Waiting for backend TCP on port $BackendPort..." -ForegroundColor DarkGray
-$backendReady = $false
-for ($i = 0; $i -lt 120; $i++) {
-    $tcp = $null
-    try {
-        $tcp = New-Object System.Net.Sockets.TcpClient
-        $tcp.Connect("127.0.0.1", $BackendPort)
-        if ($tcp.Connected) {
-            Write-Host " [BACKEND] Listening (waited $($i * 250) ms)." -ForegroundColor Green
-            $backendReady = $true
-            break
-        }
-    } catch {
-        Start-Sleep -Milliseconds 250
-    } finally {
-        if ($null -ne $tcp) {
-            try { $tcp.Close() } catch {}
-            try { $tcp.Dispose() } catch {}
-        }
+$configCandidates = @(
+    (Join-Path $PSScriptRoot 'fleet-start.config.ps1'),
+    (Join-Path (Split-Path -Parent $PSScriptRoot) 'fleet-start.config.ps1')
+)
+$configPath = $null
+foreach ($candidate in $configCandidates) {
+    if (Test-Path -LiteralPath $candidate) {
+        $configPath = $candidate
+        break
     }
 }
-if (-not $backendReady) {
-    Write-Host " [WARN] Port $BackendPort not open after ~30s. Open the backend window for errors; Vite /api proxy will fail until it is up." -ForegroundColor Yellow
+if (-not $configPath) {
+    Write-Host 'ERROR: Missing fleet-start.config.ps1 (repo root or beside start.ps1).' -ForegroundColor Red
+    exit 1
 }
 
-# 4. Start Frontend (Vite Dev Server)
-Write-Host " [FRONTEND] Starting Vite frontend on port $WebPort..." -ForegroundColor Green
-
-# 4b. Auto-Open Browser (Polling)
-$frontendUrl = "http://127.0.0.1:$WebPort/"
-$pollAndOpen = "for (`$i = 0; `$i -lt 60; `$i++) { try { `$null = Invoke-WebRequest -Uri '$frontendUrl' -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; Start-Process '$frontendUrl'; exit } catch { Start-Sleep -Seconds 1 } }"
-Start-Process powershell -ArgumentList "-NoProfile", "-WindowStyle", "Hidden", "-Command", $pollAndOpen
-
-Write-Host " [SOTA] System is orchestrating. Dashboard will open shortly." -ForegroundColor Gray
-if ($SkipFrontend) { return }
-npm run dev -- --port $WebPort --host
-
-
-
+Start-FleetWebapp @PSBoundParameters -ConfigPath $configPath -LauncherRoot $PSScriptRoot
 

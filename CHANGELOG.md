@@ -2,6 +2,13 @@
 
 All notable changes to **alexa-mcp** are documented here. The format is loosely [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Session archive**: each `interact` turn can persist `ask.mp3`, `listen.wav`, and `turn.json` under `~/.alexa-mcp/sessions/<id>/` (env `ALEXA_SESSION_ARCHIVE`, default on). MCP tool `session_archive` (list/get/delete/export_depot/send_reaper) plus REST `/api/sessions*`. Keepers export to depot-mcp; optional InsertMedia via reaper-mcp (`ALEXA_DEPOT_URL`, `ALEXA_REAPER_URL`).
+- **Live output level meter**: `playback_meter` computes real RMS/peak/FFT bars from PCM sent to PortAudio during chime/TTS; optional Windows Stereo Mix loopback via `GET/POST/DELETE /api/audio/level*`. Audio lab UI polls live levels (no fake animation).
+
 ## [0.3.1] — 2026-07-25
 
 ### Security (Critical)

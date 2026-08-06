@@ -6,6 +6,7 @@ import numpy as np
 import sounddevice as sd
 
 from .playback_device import resolve_output_device_id
+from .playback_meter import play_with_meter
 from .playback_settings import get_playback_settings
 
 logger = logging.getLogger("alexa-mcp.playback_chime")
@@ -43,7 +44,7 @@ def play_loudness_chime() -> None:
         wave = np.column_stack([wave, wave])
 
     try:
-        sd.play(wave, SAMPLE_RATE, device=dev, blocking=True)
+        play_with_meter(wave, SAMPLE_RATE, device=dev, blocking=True)
     except Exception as e:
         msg = f"Chime playback failed: {e!s}"
         raise RuntimeError(msg) from e

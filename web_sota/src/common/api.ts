@@ -80,7 +80,21 @@ export const api = {
     },
     playback: "/api/audio/playback",
     playbackTest: "/api/audio/playback/test",
+    playbackLevel: "/api/audio/level",
+    playbackLevelLoopback: "/api/audio/level/loopback",
 } as const;
+
+export interface PlaybackLevel {
+    rms: number;
+    peak: number;
+    db: number;
+    bars: number[];
+    playing: boolean;
+    source: string;
+    loopback_active: boolean;
+    loopback_device: number | null;
+    updated_at: number;
+}
 
 function buildLogParams(params: LogQueryParams): string {
     const q = new URLSearchParams();

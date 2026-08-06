@@ -34,6 +34,18 @@ from .scheduler import (
     update_preset,
     update_scheduled_command,
 )
+from .session_archive import (
+    archive_enabled,
+    create_session_dir,
+    delete_session,
+    export_to_depot,
+    get_session,
+    list_sessions,
+    save_listen_wav,
+    send_to_reaper,
+    write_turn_json,
+)
+from .sessions_api import router as sessions_router
 from .stt import transcribe_audio
 from .tts import speak_text
 from .web import LaunchRequest, setup_webapp
@@ -97,18 +109,31 @@ def get_interaction_logs() -> str:
     return "\n".join(lines)
 
 
-def _alexa_report(command: str, response: str, success: bool = True) -> str:
+def _alexa_report(
+    command: str,
+    response: str,
+    success: bool = True,
+    *,
+    session_id: str | None = None,
+) -> str:
     """Universal formatter for Alexa interactions (Mud-to-Gold standard)."""
     status_emoji = "✅" if success else "❌"
     lines = [
         f"# {status_emoji} Alexa Interaction Report",
         f"- **Command**: `{command}`",
         f"- **Response**: {f'_{response}_' if response else '*[No response detected]*'}",
-        "\n---",
-        "**Next Steps**:",
-        "- Use `interact` for a follow-up command",
-        "- Check the 'Audio' tab in the webapp for waveforms",
     ]
+    if session_id:
+        lines.append(f"- **Session**: `{session_id}`")
+    lines.extend(
+        [
+            "\n---",
+            "**Next Steps**:",
+            "- Use `interact` for a follow-up command",
+            "- Use `session_archive` to list/export keepers to depot-mcp or Reaper",
+            "- Check the 'Audio' tab in the webapp for waveforms",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -222,6 +247,8 @@ async def interact(command: str, wait_for_response: bool = True, timeout: int = 
     1. Prepend \"Alexa\" wake word if missing.
     2. Speak command via default audio output.
     3. Capture microphone response via whisper transcription.
+    4. When session archive is enabled (default), persist ask.mp3 / listen.wav / turn.json
+       under ``~/.alexa-mcp/sessions/<id>/``.
 
     ## Return Format
     "# ✅ Alexa Interaction Report\n- **Command**: `{command}`\n- **Response**: {transcription}"
@@ -237,21 +264,135 @@ async def interact(command: str, wait_for_response: bool = True, timeout: int = 
     else:
         full_command = clean_command
 
-    speak_res = await speak_command(full_command)
-    if "Error" in speak_res or "❌" in speak_res:
-        return speak_res
+    session_dir = None
+    session_id: str | None = None
+    ask_archive: str | None = None
+    if archive_enabled():
+        session_dir = create_session_dir()
+        session_id = session_dir.name
+        ask_archive = str(session_dir / "ask.mp3")
+
+    try:
+        await speak_text(full_command, archive_mp3_path=ask_archive)
+    except Exception as e:
+        logger.error(f"Error speaking command: {e}")
+        return f"❌ Error speaking command: **{e}**"
 
     if not wait_for_response:
-        return speak_res
+        if session_dir is not None:
+            write_turn_json(
+                session_dir,
+                {
+                    "id": session_id,
+                    "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "command": full_command,
+                    "response": None,
+                    "success": True,
+                    "wait_for_response": False,
+                    "files": {"ask": "ask.mp3" if ask_archive else None},
+                },
+            )
+        return _alexa_report(full_command, "", success=True, session_id=session_id)
 
     await asyncio.sleep(0.5)
 
-    transcription = await listen_for_response(duration=timeout)
-    success = "[No speech detected]" not in transcription and "Error" not in transcription
+    try:
+        logger.info(f"Listening for {timeout} seconds...")
+        audio_data = await record_audio(duration=float(timeout))
+        if session_dir is not None:
+            save_listen_wav(session_dir, audio_data)
+        logger.info("Transcribing audio...")
+        transcription = transcribe_audio(audio_data) or "[No speech detected]"
+    except Exception as e:
+        logger.error(f"Error listening: {e}")
+        transcription = f"❌ Error listening: {e!s}"
 
+    success = "[No speech detected]" not in transcription and "Error" not in transcription
     _record_interaction(full_command, transcription, success=success)
 
-    return _alexa_report(full_command, transcription, success=success)
+    if session_dir is not None:
+        write_turn_json(
+            session_dir,
+            {
+                "id": session_id,
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "command": full_command,
+                "response": transcription,
+                "success": success,
+                "wait_for_response": True,
+                "timeout_s": timeout,
+                "files": {
+                    "ask": "ask.mp3" if ask_archive else None,
+                    "listen": "listen.wav",
+                },
+            },
+        )
+
+    return _alexa_report(full_command, transcription, success=success, session_id=session_id)
+
+
+@app.tool(annotations=_READONLY)
+async def session_archive(
+    action: str = "list",
+    session_id: str | None = None,
+    limit: int = 50,
+    tier: str = "fast",
+    depot_url: str | None = None,
+    reaper_url: str | None = None,
+) -> dict[str, Any]:
+    """Manage local Alexa session archive and optional fleet exports.
+
+    Actions:
+    - list: newest sessions under ``~/.alexa-mcp/sessions/``
+    - get: full turn + file paths for ``session_id``
+    - delete: remove a local session directory
+    - export_depot: upload keepers to depot-mcp (tags ``alexa``, ``session:<id>``)
+    - send_reaper: InsertMedia listen/ask into Reaper via reaper-mcp tools/call
+
+    ## Return Format
+    {"success": bool, "action": str, ...}
+
+    ## Examples
+    session_archive(action="list", limit=20)
+    session_archive(action="export_depot", session_id="20260726T120000Z_abcd1234")
+    session_archive(action="send_reaper", session_id="20260726T120000Z_abcd1234")
+    """
+    act = (action or "list").strip().lower()
+    if act == "list":
+        return {"success": True, "action": "list", "sessions": list_sessions(limit=limit)}
+    if act == "get":
+        if not session_id:
+            return {"success": False, "action": "get", "error": "session_id required"}
+        session = get_session(session_id)
+        if not session:
+            return {"success": False, "action": "get", "error": f"session not found: {session_id}"}
+        return {"success": True, "action": "get", **session}
+    if act == "delete":
+        if not session_id:
+            return {"success": False, "action": "delete", "error": "session_id required"}
+        ok = delete_session(session_id)
+        return {
+            "success": ok,
+            "action": "delete",
+            "deleted": session_id if ok else None,
+            "error": None if ok else f"session not found: {session_id}",
+        }
+    if act in ("export_depot", "export_to_depot"):
+        if not session_id:
+            return {"success": False, "action": "export_depot", "error": "session_id required"}
+        result = await export_to_depot(session_id, base_url=depot_url, tier=tier)
+        return {"action": "export_depot", **result}
+    if act in ("send_reaper", "send_to_reaper"):
+        if not session_id:
+            return {"success": False, "action": "send_reaper", "error": "session_id required"}
+        result = await send_to_reaper(session_id, base_url=reaper_url)
+        return {"action": "send_reaper", **result}
+    return {
+        "success": False,
+        "action": act,
+        "error": f"unknown action: {action}",
+        "valid_actions": ["list", "get", "delete", "export_depot", "send_reaper"],
+    }
 
 
 @app.tool(annotations=_READONLY)
@@ -377,6 +518,7 @@ async def get_status() -> dict[str, Any]:
 
 
 web_app.include_router(logs_router)
+web_app.include_router(sessions_router)
 
 
 @web_app.post("/api/fleet/launch", dependencies=[Depends(authenticate)])
@@ -399,7 +541,7 @@ async def launch_fleet_app(request: LaunchRequest) -> dict[str, Any]:
 
         if os.path.exists(start_script):  # noqa: ASYNC240
             # S603/S607: Intentional fleet launch behavior
-            subprocess.Popen(["powershell", "-File", start_script], cwd=repo_path)  # noqa: ASYNC220, S603, S607
+            subprocess.Popen(["powershell", "-File", start_script], cwd=repo_path)  # noqa: ASYNC220
             return {"status": "launching", "app": request.app_id}
         return {"error": f"No start.ps1 found in {repo_path}"}
     except Exception as e:
@@ -418,13 +560,14 @@ async def get_diagnostics() -> dict[str, Any]:
         "server": "alexa-mcp",
         "version": "0.3.0",
         "uptime_seconds": int(time.time() - _START_TIME),
-        "tool_count": 5,
+        "tool_count": 7,
         "tools": [
             {"name": "docs_help"},
             {"name": "speak_command"},
             {"name": "listen_for_response"},
             {"name": "interact"},
             {"name": "agentic_alexa_query"},
+            {"name": "session_archive"},
             {"name": "alexa_mcp_shutdown"},
         ],
         "system": {

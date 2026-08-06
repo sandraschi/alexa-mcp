@@ -7,6 +7,7 @@ using **playback settings** (device + volume) from `~/.alexa-mcp/playback.json`.
 import asyncio
 import logging
 import os
+import shutil
 import tempfile
 import uuid
 from pathlib import Path
@@ -18,6 +19,7 @@ import numpy as np
 import sounddevice as sd
 
 from .playback_device import resolve_output_device_id
+from .playback_meter import play_with_meter
 from .playback_settings import get_playback_settings
 from .speak_policy import assert_speak_policy_allows
 
@@ -97,7 +99,7 @@ def play_mp3_file(path: str) -> None:
     data = x.astype(np.int16)
 
     try:
-        sd.play(data, decoded.sample_rate, device=dev, blocking=True)
+        play_with_meter(data, decoded.sample_rate, device=dev, blocking=True)
     except Exception as e:
         raise RuntimeError(
             f"Playback failed: {e!s}. Try another output device in Audio → playback output, or set system default."
@@ -112,10 +114,12 @@ async def speak_text(
     text: str,
     voice: str = "en-US-AriaNeural",
     output_file: str = "tts_output.wav",
+    archive_mp3_path: str | Path | None = None,
 ) -> None:
     """Synthesize with edge-tts, decode MP3, play using playback settings.
 
     ``output_file`` is accepted for backward compatibility; a temp file is used for the MP3.
+    When ``archive_mp3_path`` is set, the synthesized MP3 is copied there before cleanup.
 
     Raises:
         ValueError: if the text is blocked by the shopping / voice-purchase guard.
@@ -142,6 +146,13 @@ async def speak_text(
             raise RuntimeError(f"edge-tts save failed writing {tmp_path!r}: {e!s}") from e
         if not _nonempty_file(tmp_path):
             raise RuntimeError("edge-tts produced no audio file (network, API, or region issue).")
+        if archive_mp3_path is not None:
+            dest = Path(archive_mp3_path)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                shutil.copy2(tmp_path, dest)
+            except OSError as e:
+                logger.warning("Could not archive TTS MP3 to %s: %s", dest, e)
         await asyncio.to_thread(play_mp3_file, tmp_path)
     finally:
         _safe_unlink(tmp_path)

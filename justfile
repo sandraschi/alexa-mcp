@@ -1,17 +1,17 @@
-set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 import 'scripts/just/fleet.just'
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+# --- Dashboard ---
 
 # Open the interactive recipe dashboard in the browser
 default:
     @just --list
 
-# ── Development ───────────────────────────────────────────────────────────────
+# --- Development ---
 
 # Start the full web gateway and backend bridge
 dev:
-    pwsh -NoProfile -File '{{justfile_directory()}}\start.ps1'
+    powershell.exe -NoProfile -File '{{justfile_directory()}}\start.ps1'
 
 # Build the frontend production bundle
 build:
@@ -24,7 +24,7 @@ install:
     Set-Location '{{justfile_directory()}}/web_sota'
     npm install
 
-# ── Quality ───────────────────────────────────────────────────────────────────
+# --- Quality ---
 
 # Execute Ruff SOTA v14.1 linting
 lint:
@@ -46,27 +46,19 @@ test:
 # Gates: lint + test
 certify: lint test
 
-# ── Packaging ─────────────────────────────────────────────────────────────────
+# --- Packaging ---
 
 # Build the PyInstaller backend .exe and copy to Tauri resources
 build-sidecar:
-    pwsh -NoProfile -File '{{justfile_directory()}}\native\build.ps1'
+    powershell.exe -NoProfile -File '{{justfile_directory()}}\native\build.ps1'
 
 # Build Tauri NSIS desktop installer
 build-native:
     Set-Location '{{justfile_directory()}}\native'
     $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-    pwsh -NoProfile -File .\build.ps1
+    powershell.exe -NoProfile -File .\build.ps1
 
-# Pack MCPB bundle for Claude Desktop
-mcpb-pack:
-    uv run python scripts/mcpb-pack.ps1
-
-# Run CUA-NSIS smoke test (install -> launch -> verify -> uninstall)
-cua-nsis-test:
-    uv run python scripts/cua-smoke.py
-
-# ── Legacy ───────────────────────────────────────────────────────────────────
+# --- Legacy ---
 
 # Execute a direct acoustic verification test
 live-test:
@@ -77,7 +69,7 @@ audit:
     uv run bandit -r src/
     uv run safety check
 
-# ── Maintenance ───────────────────────────────────────────────────────────────
+# --- Maintenance ---
 
 # Clean all build and cache artifacts
 clean:
@@ -86,3 +78,9 @@ clean:
 # Verify local audio device connectivity
 verify:
     uv run python verify_setup.py
+
+# Bootstrap: install dev deps + pre-commit hook
+bootstrap:
+    uv sync --group dev
+    uv run pre-commit install
+    Write-Host "Pre-commit hooks installed." -ForegroundColor Green

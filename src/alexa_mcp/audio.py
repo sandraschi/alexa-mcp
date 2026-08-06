@@ -5,20 +5,16 @@ import numpy as np
 import scipy.io.wavfile as wav
 import sounddevice as sd
 
+from .playback_meter import play_with_meter
+
 
 def play_audio_file(file_path: str, device: int | None = None) -> None:
-    """Plays a WAV file using sounddevice."""
+    """Plays a WAV file using sounddevice (with live RMS metering)."""
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Audio file not found: {file_path}")
 
-    # Read file
     sample_rate, data = wav.read(file_path)
-
-    # Play
-    # Convert to float32 if needed for sounddevice, though it handles ints well usually.
-    # Blocking playback for simplicity in this context, or we can use wait()
-    sd.play(data, sample_rate, device=device)
-    sd.wait()
+    play_with_meter(data, sample_rate, device=device, blocking=True)
 
 
 async def record_audio(duration: float, sample_rate: int = 16000, device: int | None = None) -> np.ndarray:

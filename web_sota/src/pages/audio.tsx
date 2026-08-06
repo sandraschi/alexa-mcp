@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { api, postTool } from "@/common/api";
+import { api, postTool, type PlaybackLevel } from "@/common/api";
 import { Bell, Headphones, Loader2, Mic, Radio, Volume2 } from "lucide-react";
 
 const DEFAULT_SPEAK = "Alexa, hello.";
 const SELECT_DEFAULT = "__system_default__";
+const BAR_COUNT = 12;
+const LEVEL_POLL_MS = 80;
 
 interface OutputDeviceRow {
     id: number;
@@ -25,22 +27,121 @@ interface PlaybackPayload {
 }
 
 function LevelMeter() {
+    const [bars, setBars] = useState<number[]>(() => Array.from({ length: BAR_COUNT }, () => 0));
+    const [rms, setRms] = useState(0);
+    const [peak, setPeak] = useState(0);
+    const [db, setDb] = useState(-120);
+    const [source, setSource] = useState("idle");
+    const [playing, setPlaying] = useState(false);
+    const [loopbackNote, setLoopbackNote] = useState<string | null>(null);
+    const smoothed = useRef<number[]>(Array.from({ length: BAR_COUNT }, () => 0));
+
+    useEffect(() => {
+        let cancelled = false;
+        let timer: ReturnType<typeof setInterval> | null = null;
+
+        const applyLevel = (data: PlaybackLevel) => {
+            const next = data.bars?.length === BAR_COUNT ? data.bars : Array.from({ length: BAR_COUNT }, () => data.rms);
+            smoothed.current = smoothed.current.map((prev, i) => {
+                const target = next[i] ?? 0;
+                return prev * 0.45 + target * 0.55;
+            });
+            setBars([...smoothed.current]);
+            setRms(data.rms);
+            setPeak(data.peak);
+            setDb(data.db);
+            setSource(data.source);
+            setPlaying(data.playing);
+        };
+
+        (async () => {
+            try {
+                const lb = await fetch(api.playbackLevelLoopback, { method: "POST" });
+                const lbJson = (await lb.json()) as { ok?: boolean; error?: string; device?: number | null };
+                if (!cancelled) {
+                    if (lbJson.ok) {
+                        setLoopbackNote(
+                            lbJson.device != null
+                                ? `Loopback input #${lbJson.device} active (Stereo Mix / system mix).`
+                                : "Loopback active.",
+                        );
+                    } else {
+                        setLoopbackNote(
+                            lbJson.error ??
+                                "No Stereo Mix — meter follows app playback (chime / TTS) only.",
+                        );
+                    }
+                }
+            } catch {
+                if (!cancelled) {
+                    setLoopbackNote("Loopback unavailable — meter follows app playback (chime / TTS).");
+                }
+            }
+
+            const poll = async () => {
+                try {
+                    const res = await fetch(api.playbackLevel);
+                    if (!res.ok) return;
+                    const data = (await res.json()) as PlaybackLevel;
+                    if (!cancelled) applyLevel(data);
+                } catch {
+                    /* ignore transient poll errors */
+                }
+            };
+
+            await poll();
+            timer = setInterval(() => {
+                void poll();
+            }, LEVEL_POLL_MS);
+        })();
+
+        return () => {
+            cancelled = true;
+            if (timer) clearInterval(timer);
+            void fetch(api.playbackLevelLoopback, { method: "DELETE" }).catch(() => undefined);
+        };
+    }, []);
+
+    const maxH = 128;
     return (
-        <div className="flex h-36 items-end justify-center gap-1.5 px-4">
-            {Array.from({ length: 12 }, (_, i) => (
-                <motion.div
-                    key={i}
-                    className="w-2.5 max-h-full rounded-t bg-gradient-to-t from-blue-600/40 to-cyan-400/90"
-                    initial={{ height: 16 }}
-                    animate={{ height: [12, 48 + (i % 5) * 12, 20, 56 + (i % 3) * 8, 16] }}
-                    transition={{
-                        duration: 1.4,
-                        repeat: Number.POSITIVE_INFINITY,
-                        delay: i * 0.08,
-                        ease: "easeInOut",
-                    }}
-                />
-            ))}
+        <div className="space-y-3">
+            <div className="flex h-36 items-end justify-center gap-1.5 px-4">
+                {bars.map((level, i) => {
+                    const h = Math.max(4, Math.round(level * maxH));
+                    const hot = level > 0.85;
+                    return (
+                        <motion.div
+                            key={i}
+                            className={
+                                hot
+                                    ? "w-2.5 max-h-full rounded-t bg-gradient-to-t from-amber-700/50 to-rose-400"
+                                    : "w-2.5 max-h-full rounded-t bg-gradient-to-t from-blue-600/40 to-cyan-400/90"
+                            }
+                            animate={{ height: h }}
+                            transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.35 }}
+                        />
+                    );
+                })}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 text-xs text-slate-500 tabular-nums">
+                <span>
+                    RMS <span className="text-slate-300">{(rms * 100).toFixed(1)}%</span>
+                </span>
+                <span>
+                    Peak <span className="text-slate-300">{(peak * 100).toFixed(1)}%</span>
+                </span>
+                <span>
+                    <span className="text-slate-300">{db <= -120 ? "−∞" : `${db.toFixed(1)} dBFS`}</span>
+                </span>
+                <span>
+                    Source{" "}
+                    <span className="text-cyan-400/90">
+                        {playing ? "playback" : source}
+                        {playing ? " ●" : ""}
+                    </span>
+                </span>
+            </div>
+            {loopbackNote && <p className="text-center text-xs text-slate-600 px-4">{loopbackNote}</p>}
         </div>
     );
 }
@@ -272,7 +373,8 @@ export function Audio() {
                         Output level
                     </CardTitle>
                     <CardDescription className="text-slate-500">
-                        Indicative animation only — not live RMS from the device.
+                        Live RMS from PCM sent to the selected output (chime / TTS). Uses Windows Stereo Mix
+                        loopback when available for continuous device-mix levels.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="bg-slate-900/20 pb-6">

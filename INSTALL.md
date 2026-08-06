@@ -47,7 +47,7 @@ If you prefer not to use `just`:
    uv run python -m alexa_mcp.server
 
    # HTTP mode (for web dashboard)
-   uv run uvicorn alexa_mcp.server:app --port 10801
+   uv run uvicorn alexa_mcp.server:asgi_app --port 10801
    ```
 5. Open `http://localhost:10801` or the frontend URL.
 

@@ -1,5 +1,4 @@
-"""
-Shared fixtures and mocks for alexa-mcp test suite.
+"""Shared fixtures and mocks for alexa-mcp test suite.
 
 Hardware-dependent libraries (sounddevice, faster_whisper, edge_tts, pydub)
 are stubbed into sys.modules at module-load time for headless/CI runs.
@@ -45,6 +44,7 @@ _audio_segment.export.return_value = None
 _pydub_module = MagicMock()
 _pydub_module.AudioSegment = _audio_segment
 sys.modules.setdefault("pydub", _pydub_module)
+
 
 @pytest.fixture()
 def mock_sounddevice() -> MagicMock:

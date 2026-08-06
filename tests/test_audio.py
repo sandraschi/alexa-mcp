@@ -1,6 +1,5 @@
 """Tests for alexa_mcp.audio — all hardware mocked via conftest."""
 
-
 import numpy as np
 import pytest
 
@@ -8,14 +7,15 @@ import pytest
 # play_audio_file
 # ---------------------------------------------------------------------------
 
+
 class TestPlayAudioFile:
-    def test_raises_if_file_missing(self):
+    def test_raises_if_file_missing(self) -> None:
         from alexa_mcp.audio import play_audio_file
 
         with pytest.raises(FileNotFoundError, match="not found"):
             play_audio_file("/nonexistent/path/audio.wav")
 
-    def test_plays_existing_file(self, tmp_wav, mock_scipy_wavfile, mocker):
+    def test_plays_existing_file(self, tmp_wav, mock_scipy_wavfile, mocker) -> None:
         mock_play = mocker.patch("alexa_mcp.audio.play_with_meter")
         from alexa_mcp.audio import play_audio_file
 
@@ -26,7 +26,7 @@ class TestPlayAudioFile:
         _, kwargs = mock_play.call_args
         assert kwargs.get("blocking") is True
 
-    def test_passes_device_argument(self, tmp_wav, mock_scipy_wavfile, mocker):
+    def test_passes_device_argument(self, tmp_wav, mock_scipy_wavfile, mocker) -> None:
         mock_play = mocker.patch("alexa_mcp.audio.play_with_meter")
         from alexa_mcp.audio import play_audio_file
 
@@ -41,9 +41,10 @@ class TestPlayAudioFile:
 # record_audio
 # ---------------------------------------------------------------------------
 
+
 class TestRecordAudio:
     @pytest.mark.asyncio
-    async def test_returns_flattened_array(self, mock_sounddevice):
+    async def test_returns_flattened_array(self, mock_sounddevice) -> None:
         from alexa_mcp.audio import record_audio
 
         result = await record_audio(duration=2.0)
@@ -52,7 +53,7 @@ class TestRecordAudio:
         assert result.ndim == 1
 
     @pytest.mark.asyncio
-    async def test_records_correct_number_of_samples(self, mock_sounddevice):
+    async def test_records_correct_number_of_samples(self, mock_sounddevice) -> None:
         from alexa_mcp.audio import record_audio
 
         sample_rate = 16000
@@ -74,7 +75,7 @@ class TestRecordAudio:
         assert len(result) == expected_samples
 
     @pytest.mark.asyncio
-    async def test_waits_for_recording_to_finish(self, mock_sounddevice):
+    async def test_waits_for_recording_to_finish(self, mock_sounddevice) -> None:
         from alexa_mcp.audio import record_audio
 
         mock_sounddevice.wait.reset_mock()
@@ -87,8 +88,9 @@ class TestRecordAudio:
 # save_wav
 # ---------------------------------------------------------------------------
 
+
 class TestSaveWav:
-    def test_saves_numpy_array(self, tmp_path, mock_scipy_wavfile):
+    def test_saves_numpy_array(self, tmp_path, mock_scipy_wavfile) -> None:
         from alexa_mcp.audio import save_wav
 
         data = np.zeros(100, dtype="float32")

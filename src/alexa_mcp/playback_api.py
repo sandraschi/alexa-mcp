@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from .auth import authenticate
 from .playback_device import resolve_output_device_id
+from .playback_meter import get_meter
 from .playback_settings import get_playback_settings, set_playback_settings
 
 logger = logging.getLogger("alexa-mcp.playback_api")
@@ -96,3 +97,27 @@ async def post_playback_test(body: PlaybackTestBody) -> dict[str, str]:
 
         await asyncio.to_thread(play_loudness_chime)
     return {"status": "ok", "kind": body.kind}
+
+
+@router.get("/level")
+async def get_audio_level() -> dict[str, Any]:
+    """Live output meter snapshot (RMS / peak / FFT bars).
+
+    Prefer playback-path metering (PCM sent to PortAudio during chime/TTS).
+    When Stereo Mix / loopback is available and acquired, ``source`` may be
+    ``loopback`` for ambient device mix levels.
+    """
+    return get_meter().snapshot()
+
+
+@router.post("/level/loopback")
+async def start_level_loopback() -> dict[str, Any]:
+    """Try to start Windows Stereo Mix / loopback capture for continuous metering."""
+    return get_meter().acquire_loopback()
+
+
+@router.delete("/level/loopback")
+async def stop_level_loopback() -> dict[str, str]:
+    """Release a loopback meter consumer (stops capture when refcount hits 0)."""
+    get_meter().release_loopback()
+    return {"status": "ok"}
