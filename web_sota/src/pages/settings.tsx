@@ -4,12 +4,60 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Save, RefreshCw, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
+
+const STORAGE_KEY = "alexa_mcp_settings";
+interface Settings { provider: string; model: string; endpoint: string; }
+const DEFAULTS: Settings = { provider: "ollama", model: "llama3", endpoint: "http://localhost:11434" };
+
+function loadSettings(): Settings {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    } catch { }
+    return { ...DEFAULTS };
+}
 
 export function Settings() {
-    const [provider, setProvider] = useState("ollama");
-    const [model, setModel] = useState("gemini-2.0-flash-exp");
-    const [endpoint, setEndpoint] = useState("http://localhost:11434");
+    const [settings, setSettings] = useState<Settings>(DEFAULTS);
+    const [savedOk, setSavedOk] = useState(false);
+    const [models, setModels] = useState<string[]>([]);
+    const [loadingModels, setLoadingModels] = useState(false);
+    const [serverStatus, setServerStatus] = useState<{ status: string; version: string } | null>(null);
+
+    useEffect(() => {
+        setSettings(loadSettings());
+        fetch("/api/status").then(r => r.json()).then(setServerStatus).catch(() => { });
+    }, []);
+
+    const handleSave = () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+        setSavedOk(true);
+        toast.success("Settings saved");
+        setTimeout(() => setSavedOk(false), 2500);
+    };
+
+    const handleRefreshModels = async () => {
+        setLoadingModels(true);
+        try {
+            const url = `/api/ai/models?provider=${encodeURIComponent(settings.provider)}&endpoint=${encodeURIComponent(settings.endpoint)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            const list: string[] = (data.models ?? data.data ?? []).map(
+                (m: { name?: string; id?: string }) => m.name ?? m.id ?? String(m)
+            );
+            setModels(list);
+            if (list.length === 0) toast.warning("No models found — is the server running?");
+            else toast.success(`Found ${list.length} models`);
+        } catch (err) {
+            toast.error(`Could not fetch models: ${err}`);
+        } finally { setLoadingModels(false); }
+    };
+
+    const isOnline = serverStatus?.status === "online";
 
     return (
         <div className="space-y-6">
@@ -17,20 +65,17 @@ export function Settings() {
                 <h2 className="text-2xl font-bold tracking-tight text-white">Settings</h2>
                 <p className="text-slate-400">Configure Local LLM and app preferences</p>
             </div>
-
             <div className="grid gap-6">
                 <Card className="border-slate-800 bg-slate-950/50">
                     <CardHeader>
                         <CardTitle className="text-white">Local LLM Configuration</CardTitle>
-                        <CardDescription className="text-slate-400">Select your preferred AI provider and model</CardDescription>
+                        <CardDescription className="text-slate-400">Persisted to localStorage.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid gap-2">
                             <Label className="text-slate-300">Provider</Label>
-                            <Select value={provider} onValueChange={setProvider}>
-                                <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100">
-                                    <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
+                            <Select value={settings.provider} onValueChange={(v) => setSettings(s => ({ ...s, provider: v }))}>
+                                <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                                     <SelectItem value="ollama">Ollama</SelectItem>
                                     <SelectItem value="lmstudio">LM Studio</SelectItem>
@@ -38,58 +83,65 @@ export function Settings() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div className="grid gap-2">
                             <Label className="text-slate-300">Endpoint URL</Label>
-                            <Input
-                                className="bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-400"
-                                value={endpoint}
-                                onChange={(e) => setEndpoint(e.target.value)}
-                            />
+                            <Input className="bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500"
+                                value={settings.endpoint}
+                                onChange={(e) => setSettings(s => ({ ...s, endpoint: e.target.value }))}
+                                placeholder="http://localhost:11434" />
                         </div>
-
                         <div className="grid gap-2">
-                            <Label className="text-slate-300">Model Selection</Label>
-                            <Select value={model} onValueChange={setModel}>
-                                <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100">
-                                    <SelectValue placeholder="Select model" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                                    <SelectItem value="gemini-2.0-flash-exp">Gemini 2.0 Flash</SelectItem>
-                                    <SelectItem value="llama3.1:8b">Llama 3.1 8B</SelectItem>
-                                    <SelectItem value="mistral:latest">Mistral</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-slate-300">Model</Label>
+                                <button onClick={handleRefreshModels} disabled={loadingModels}
+                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 disabled:opacity-50">
+                                    <RefreshCw className={`h-3 w-3 ${loadingModels ? "animate-spin" : ""}`} />Fetch from server
+                                </button>
+                            </div>
+                            {models.length > 0 ? (
+                                <Select value={settings.model} onValueChange={(v) => setSettings(s => ({ ...s, model: v }))}>
+                                    <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                                        {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <Input className="bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500"
+                                    value={settings.model}
+                                    onChange={(e) => setSettings(s => ({ ...s, model: e.target.value }))}
+                                    placeholder="llama3" />
+                            )}
                         </div>
-
                         <div className="flex gap-2 pt-2">
-                            <Button className="bg-blue-600 hover:bg-blue-700">
-                                <Save className="mr-2 h-4 w-4" /> Save Settings
+                            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+                                {savedOk ? <><CheckCircle className="mr-2 h-4 w-4" />Saved!</> : <><Save className="mr-2 h-4 w-4" />Save Settings</>}
                             </Button>
-                            <Button variant="outline" className="border-slate-800 text-slate-300 hover:bg-slate-800">
-                                <RefreshCw className="mr-2 h-4 w-4" /> Refresh Models
+                            <Button variant="outline" onClick={handleRefreshModels} disabled={loadingModels}
+                                className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                                <RefreshCw className={`mr-2 h-4 w-4 ${loadingModels ? "animate-spin" : ""}`} />Refresh Models
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
-
                 <Card className="border-slate-800 bg-slate-950/50">
                     <CardHeader>
-                        <CardTitle className="text-white">App Information</CardTitle>
-                        <CardDescription className="text-slate-400">SOTA Version 12.1 - Alsergrund Standard</CardDescription>
+                        <CardTitle className="text-white">Server Info</CardTitle>
+                        <CardDescription className="text-slate-400">Live from /api/status</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">Server Status</span>
-                            <span className="text-green-500 font-medium">Online</span>
+                    <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-slate-400">Status</span>
+                            <Badge className={isOnline ? "bg-green-900/40 text-green-400 border-green-800" : "bg-red-900/40 text-red-400 border-red-800"}>
+                                {serverStatus?.status ?? "unreachable"}
+                            </Badge>
                         </div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-slate-400">Version</span>
+                            <span className="text-slate-200">{serverStatus?.version ?? "—"}</span>
+                        </div>
+                        <div className="flex justify-between">
                             <span className="text-slate-400">Transport</span>
-                            <span className="text-blue-400 font-medium">HTTP/Dual</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">Port</span>
-                            <span className="text-slate-200">10801</span>
+                            <span className="text-blue-400">HTTP / STDIO</span>
                         </div>
                     </CardContent>
                 </Card>
