@@ -37,7 +37,7 @@ def _ensure_edge_tls_can_load_certs() -> None:
     if not os.path.isfile(p):
         _CERTIFI_WARNED = True
         logger.error(
-            "certifi CA bundle is missing at %r — edge-tts HTTPS/WebSocket can fail. "
+            "certifi CA bundle is missing at %r - edge-tts HTTPS/WebSocket can fail. "
             "Reinstall certifi/venv or set SSL_CERT_FILE to a valid cacert.pem.",
             p,
         )
@@ -150,7 +150,7 @@ async def speak_text(
             dest = Path(archive_mp3_path)
             dest.parent.mkdir(parents=True, exist_ok=True)
             try:
-                shutil.copy2(tmp_path, dest)
+                await asyncio.to_thread(shutil.copy2, tmp_path, dest)
             except OSError as e:
                 logger.warning("Could not archive TTS MP3 to %s: %s", dest, e)
         await asyncio.to_thread(play_mp3_file, tmp_path)
