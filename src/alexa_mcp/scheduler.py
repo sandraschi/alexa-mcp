@@ -1,4 +1,4 @@
-"""Voice command scheduler — cron-like Alexa automation with SQLite persistence."""
+"""Voice command scheduler - cron-like Alexa automation with SQLite persistence."""
 
 import asyncio
 import logging
@@ -110,7 +110,7 @@ def update_scheduled_command(cmd_id: int, **kwargs: str) -> dict[str, Any] | Non
     updates["updated_at"] = datetime.now(UTC).isoformat()
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     values = [*list(updates.values()), cmd_id]
-    conn.execute(f"UPDATE scheduled_commands SET {set_clause} WHERE id = ?", values)  # noqa: S608 — keys from frozenset whitelist
+    conn.execute(f"UPDATE scheduled_commands SET {set_clause} WHERE id = ?", values)
     conn.commit()
     row = conn.execute("SELECT * FROM scheduled_commands WHERE id = ?", (cmd_id,)).fetchone()
     return dict(row) if row else None
@@ -186,7 +186,7 @@ def update_preset(
         updates["updated_at"] = datetime.now(UTC).isoformat()
         set_clause = ", ".join(f"{k} = ?" for k in updates)
         values = [*list(updates.values()), preset_id]
-        conn.execute(f"UPDATE command_presets SET {set_clause} WHERE id = ?", values)  # noqa: S608 — keys from frozenset whitelist
+        conn.execute(f"UPDATE command_presets SET {set_clause} WHERE id = ?", values)
     if steps is not None:
         conn.execute("DELETE FROM preset_steps WHERE preset_id = ?", (preset_id,))
         for i, step in enumerate(steps):

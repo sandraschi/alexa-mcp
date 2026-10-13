@@ -5,17 +5,17 @@ from __future__ import annotations
 import os
 import re
 
-# Order tracking, refunds — not new purchases
+# Order tracking, refunds - not new purchases
 _INFO = re.compile(
     r"(?i)(order status|where('s| is) my order|wheres my order|track(ing| my| the)?\s+"
     r"order|view (my|the) orders?|list my orders|refund|return( item)?\b)",
 )
-# “Buy / order / cart” style phrasing; only blocks when combined with an Amazon context (below)
+# "Buy / order / cart" style phrasing; only blocks when combined with an Amazon context (below)
 _VERB = re.compile(
     r"(?i)\b(orders?|reorders?|reorder(ing)?|buy(ing)?|purchas(e|ing|es)?|"
     r"place(\s+an?)?\s+order|one[- ]?click|checkout|subscribe\s+and\s+save)\b",
 )
-# e.g. “add to cart”, “add shampoo to my cart”
+# e.g. "add to cart", "add shampoo to my cart"
 _ADD_TO_CART = re.compile(
     r"(?i)\badd(ing|)?\s+("
     r"to(\s+my)?\s+cart"  # add to cart / add to my cart

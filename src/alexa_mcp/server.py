@@ -69,7 +69,7 @@ _START_TIME: float = time.time()
 
 
 def _error_response(error: str, error_type: str = "general", **kwargs: object) -> dict[str, object]:
-    """Auto-logging error response — traceback logged before returning to caller."""
+    """Auto-logging error response - traceback logged before returning to caller."""
     logger.exception("Tool error: %s [%s]", error, error_type)
     return {"success": False, "error": error, "error_type": error_type, **kwargs}
 
@@ -402,7 +402,7 @@ async def agentic_alexa_query(query: str, ctx: Context) -> str:
     Ensures the natural language query is translated into a clear Alexa command.
 
     ## Return Format
-    Same as interact() — interaction report markdown string.
+    Same as interact() - interaction report markdown string.
 
     ## Examples
     agentic_alexa_query("ask alexa what the weather will be like tomorrow")
@@ -438,7 +438,7 @@ async def alexa_mcp_shutdown(confirm: bool = False) -> str:
     alexa_mcp_shutdown(confirm=True)
     """
     if not confirm:
-        return "Shutdown aborted — set confirm=True to proceed."
+        return "Shutdown aborted - set confirm=True to proceed."
     logger.warning("Shutdown requested via MCP tool")
     task = asyncio.create_task(_do_shutdown())
     task.add_done_callback(lambda t: logger.info("Shutdown task done"))
@@ -551,7 +551,7 @@ async def launch_fleet_app(request: LaunchRequest) -> dict[str, Any]:
 
 @web_app.get("/api/v1/diagnostics")
 async def get_diagnostics() -> dict[str, Any]:
-    """Full diagnostics — tool list, system info, errors.
+    """Full diagnostics - tool list, system info, errors.
 
     Required for CUA-NSIS smoke testing.
     """
@@ -731,7 +731,7 @@ async def api_run_preset(preset_id: int) -> dict[str, Any]:
 
 @web_app.post("/api/announce")
 async def api_announce(body: dict[str, Any]) -> dict[str, Any]:
-    """Fleet-wide announce endpoint — speaks text via the acoustic bridge.
+    """Fleet-wide announce endpoint - speaks text via the acoustic bridge.
 
     Call from other MCP servers to make announcements via Alexa.
     """
@@ -763,7 +763,7 @@ async def api_analytics() -> dict[str, Any]:
     return get_analytics(days=7)
 
 
-# Prefab (MCP Apps) — fleet list/status surface
+# Prefab (MCP Apps) - fleet list/status surface
 register_prefab_tools(app)
 
 # 3. Securely bridge the app and web_app as separate entities
@@ -778,7 +778,7 @@ def main() -> None:
     if os.getenv("MCP_TRANSPORT") == "http" or "--http" in sys.argv:
         port = int(os.getenv("MCP_PORT", "10801"))
         logger.info(f"Starting Alexa MCP Web Bridge on port {port}...")
-        uvicorn.run(web_app, host="0.0.0.0", port=port)  # noqa: S104
+        uvicorn.run(web_app, host="0.0.0.0", port=port)
     else:
         # Standard MCP run (Protocol only)
         run_server(app, server_name="alexa-mcp")

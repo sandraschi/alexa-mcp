@@ -1,4 +1,4 @@
-"""MCP Apps (Prefab): list/status surfaces for Alexa interaction log — fleet standard."""
+"""MCP Apps (Prefab): list/status surfaces for Alexa interaction log - fleet standard."""
 
 from __future__ import annotations
 

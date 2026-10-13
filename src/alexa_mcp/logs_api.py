@@ -72,5 +72,5 @@ async def logs_clear() -> dict[str, bool]:
 
 @router.get("/activity")
 async def activity_feed(limit: int = Query(50, ge=1, le=200)) -> dict:
-    """Legacy dashboard widget — interaction entries only."""
+    """Legacy dashboard widget - interaction entries only."""
     return query_logs(limit=limit, offset=0, kind="interaction", sort="desc")

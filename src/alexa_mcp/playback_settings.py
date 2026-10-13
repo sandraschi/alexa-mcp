@@ -50,7 +50,7 @@ def _load() -> PlaybackSettings:
                 else:
                     _settings = PlaybackSettings()
             except (OSError, json.JSONDecodeError, TypeError, ValueError, KeyError) as e:
-                logger.warning("Could not load %s: %s — using defaults", _CONFIG_PATH, e)
+                logger.warning("Could not load %s: %s - using defaults", _CONFIG_PATH, e)
                 _settings = PlaybackSettings()
         else:
             _settings = PlaybackSettings()
