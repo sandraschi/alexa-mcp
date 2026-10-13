@@ -5,11 +5,22 @@ $BackendPort = 10801
 $FrontendPort = 10800
 
 # Port zombie clearing
+# HARDENED 2026-09-17: was Stop-Process + blind Start-Sleep -Seconds 1, no check
+# the ports actually freed before proceeding to bind them again
+# (TRAPS_AND_PITFALLS.md #36). Poll instead.
 Get-NetTCPConnection -LocalPort $BackendPort -ErrorAction SilentlyContinue |
     ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
 Get-NetTCPConnection -LocalPort $FrontendPort -ErrorAction SilentlyContinue |
     ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
-Start-Sleep -Seconds 1
+$portClearWaitSec = 10
+$portClearElapsed = 0
+while ($portClearElapsed -lt $portClearWaitSec) {
+    Start-Sleep -Milliseconds 500
+    $portClearElapsed += 0.5
+    $stillBound = (Get-NetTCPConnection -LocalPort $BackendPort -ErrorAction SilentlyContinue) -or
+                  (Get-NetTCPConnection -LocalPort $FrontendPort -ErrorAction SilentlyContinue)
+    if (-not $stillBound) { break }
+}
 
 Write-Host "Starting alexa-mcp..." -ForegroundColor Cyan
 
@@ -41,7 +52,7 @@ if ($BackendOnly -or $Headless) {
 # Start frontend
 $WebRoot = Join-Path $ScriptRoot "web_sota"
 Push-Location $WebRoot
-Start-Process -NoNewWindow -FilePath "npx" -ArgumentList "vite --port $FrontendPort --host 127.0.0.1" -WorkingDirectory $WebRoot
+Start-Process -NoNewWindow -FilePath "cmd.exe" -ArgumentList "/c","npx vite --port $FrontendPort --host 127.0.0.1" -WorkingDirectory $WebRoot
 Pop-Location
 
 # Auto-open browser
