@@ -8,6 +8,8 @@
 </p>
 
 
+Alexa Acoustic Bridge - let agentic AI speak to Alexa devices with neural TTS and hear replies via local transcription.
+
 > 📖 **[Installation Guide](INSTALL.md)** — quick start, manual setup, and troubleshooting
 
 ## Quick Start
